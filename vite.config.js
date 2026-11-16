@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  // Firebase SDK сам по себе ~450 КБ; бандл одной страницы, предупреждение не нужно.
+  build: { chunkSizeWarningLimit: 800 },
 })

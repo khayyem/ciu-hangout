@@ -1,0 +1,146 @@
+rules_version = '2';
+
+// Правила для CIU Hangout. Деплой: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function isAdmin() { return signedIn() && request.auth.token.get('admin', false) == true; }
+    function hasProfile() { return signedIn() && exists(/databases/$(database)/documents/users/$(me())); }
+    function str(v, min, max) { return v is string && v.size() >= min && v.size() <= max; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // ---------- Профили ----------
+    // Публичная часть профиля: видят все вошедшие студенты.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && me() == uid && validProfile(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    function validProfile(d) {
+      return d.keys().hasOnly(['name', 'short', 'dept', 'year', 'bio', 'photoURL', 'updatedAt'])
+        && d.keys().hasAll(['name', 'short', 'dept', 'year'])
+        && str(d.name, 3, 60)
+        && str(d.short, 1, 60)
+        && str(d.dept, 1, 60)
+        && str(d.year, 1, 30)
+        && (!('bio' in d) || str(d.bio, 0, 300))
+        && (!('photoURL' in d) || d.photoURL == null || str(d.photoURL, 1, 200000))
+        && (!('updatedAt' in d) || d.updatedAt == request.time);
+    }
+
+    // Student ID: читать и писать может только сам владелец.
+    match /users_private/{uid} {
+      allow read: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['sid'])
+        && request.resource.data.sid is string
+        && request.resource.data.sid.matches('^[0-9]{6,10}$');
+      allow delete: if signedIn() && me() == uid;
+    }
+
+    // ---------- Активности ----------
+    function validActivityFields(d) {
+      return str(d.title, 1, 80)
+        && d.cat in ['Sports', 'Food', 'Study', 'Games', 'Trips', 'Chill']
+        && d.at is number
+        && str(d.place, 1, 120)
+        && d.max is int && d.max >= 0 && d.max <= 100
+        && str(d.desc, 0, 1000);
+    }
+
+    match /activities/{id} {
+      allow read: if hasProfile();
+
+      // Создатель = хост и первый участник.
+      allow create: if hasProfile()
+        && request.resource.data.keys().hasOnly(['title', 'cat', 'at', 'place', 'max', 'desc', 'hostUid', 'memberUids', 'createdAt'])
+        && validActivityFields(request.resource.data)
+        && request.resource.data.at > request.time.toMillis() - 10 * 60 * 1000
+        && request.resource.data.hostUid == me()
+        && request.resource.data.memberUids == [me()]
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if hostEdit() || joining() || leaving() || touchingChat();
+
+      allow delete: if signedIn() && (resource.data.hostUid == me() || isAdmin());
+    }
+
+    // Хост меняет детали; лимит нельзя сделать меньше числа уже записавшихся.
+    function hostEdit() {
+      let d = request.resource.data;
+      return signedIn() && resource.data.hostUid == me()
+        && changed().hasOnly(['title', 'cat', 'at', 'place', 'max', 'desc'])
+        && validActivityFields(d)
+        && (d.max == 0 || d.max >= d.memberUids.size());
+    }
+
+    // Вступить можно только самому себе и только если есть место.
+    function joining() {
+      let before = resource.data.memberUids;
+      let after = request.resource.data.memberUids;
+      return hasProfile()
+        && changed().hasOnly(['memberUids'])
+        && !before.hasAny([me()])
+        && after.size() == before.size() + 1
+        && after.hasAll(before)
+        && after.hasAll([me()])
+        && (resource.data.max == 0 || after.size() <= resource.data.max);
+    }
+
+    // Выйти может любой участник, кроме хоста.
+    function leaving() {
+      let before = resource.data.memberUids;
+      let after = request.resource.data.memberUids;
+      return signedIn()
+        && changed().hasOnly(['memberUids'])
+        && resource.data.hostUid != me()
+        && before.hasAny([me()])
+        && !after.hasAny([me()])
+        && after.size() == before.size() - 1
+        && before.hasAll(after);
+    }
+
+    // Участник отправил сообщение — обновляем время последнего сообщения (для сортировки чатов).
+    function touchingChat() {
+      return signedIn()
+        && changed().hasOnly(['lastMsgAt'])
+        && resource.data.memberUids.hasAny([me()])
+        && request.resource.data.lastMsgAt == request.time;
+    }
+
+    // ---------- Групповой чат ----------
+    match /activities/{id}/messages/{msgId} {
+      function activity() { return get(/databases/$(database)/documents/activities/$(id)).data; }
+      function isMember() { return signedIn() && activity().memberUids.hasAny([me()]); }
+
+      allow read: if isMember() || isAdmin();
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['uid', 'text', 'createdAt'])
+        && request.resource.data.uid == me()
+        && str(request.resource.data.text, 1, 1000)
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() || (signedIn() && activity().hostUid == me());
+    }
+
+    // ---------- Жалобы ----------
+    match /reports/{id} {
+      allow create: if hasProfile()
+        && request.resource.data.keys().hasOnly(['type', 'targetId', 'targetTitle', 'reason', 'details', 'reporterUid', 'status', 'createdAt'])
+        && request.resource.data.type in ['activity', 'user']
+        && str(request.resource.data.targetId, 1, 128)
+        && str(request.resource.data.reason, 1, 100)
+        && (!('targetTitle' in request.resource.data) || str(request.resource.data.targetTitle, 0, 200))
+        && (!('details' in request.resource.data) || str(request.resource.data.details, 0, 500))
+        && request.resource.data.reporterUid == me()
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin() && changed().hasOnly(['status', 'resolvedAt']);
+      allow delete: if isAdmin();
+    }
+  }
+}
