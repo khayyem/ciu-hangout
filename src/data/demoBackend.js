@@ -37,12 +37,12 @@ const state = {
   users: Object.fromEntries(PEOPLE.map((p) => [p.uid, p])),
   privates: {},
   acts: [
-    { id: "a1", title: "5-a-side football", cat: "Sports", at: at(0, 19, 30), place: "CIU pitch behind the sports hall", max: 10, desc: "Casual game, all levels. Bring water. We split into teams on the spot.", hostUid: U("Tunde"), memberUids: us("Tunde", "Omar", "Reza", "Bilal", "Arda", "Musa", "Kemal") },
-    { id: "a2", title: "Late-night study for CMPE 211", cat: "Study", at: at(0, 21, 0), place: "Library, 2nd floor group room", max: 6, desc: "Going through past midterm questions together.", hostUid: U("Leyla"), memberUids: us("Leyla", "Sara") },
-    { id: "a3", title: "Hellim and kebab in Lefkoşa old town", cat: "Food", at: at(1, 20, 0), place: "Meet at the main gate, shared taxi", max: 5, desc: "Dinner at a local place near Büyük Han. Around 400 TL each.", hostUid: U("Elif"), memberUids: us("Elif", "Amaka", "Daniel") },
-    { id: "a4", title: "Board games night", cat: "Games", at: at(1, 18, 30), place: "Dorm B common room", max: 8, desc: "Catan, Codenames and UNO. Snacks welcome.", hostUid: U("Daniel"), memberUids: us("Daniel", "Sara", "Aisha") },
-    { id: "a5", title: "Sunrise hike to St. Hilarion", cat: "Trips", at: at(3, 5, 30), place: "Main gate, two cars", max: 7, desc: "About 2 hours up and back. Wear proper shoes, it's rocky.", hostUid: U("Arda"), memberUids: us("Arda", "Musa") },
-    { id: "a6", title: "Beach day in Kyrenia", cat: "Chill", at: at(4, 11, 0), place: "Bus stop near the dorms", max: 0, desc: "Escape Beach. Bus there, figure out the way back together.", hostUid: U("Zara"), memberUids: us("Zara", "Aisha", "Omar", "Leyla", "Kemal") },
+    { id: "a1", title: "5-a-side football", cat: "Sports", at: at(0, 19, 30), place: "CIU Arena · Football pitches", max: 10, desc: "Casual game, all levels. Bring water. We split into teams on the spot.", hostUid: U("Tunde"), memberUids: us("Tunde", "Omar", "Reza", "Bilal", "Arda", "Musa", "Kemal") },
+    { id: "a2", title: "Late-night study for CMPE 211", cat: "Study", at: at(0, 21, 0), place: "CIU Library", max: 6, desc: "Going through past midterm questions together.", hostUid: U("Leyla"), memberUids: us("Leyla", "Sara") },
+    { id: "a3", title: "Hellim and kebab in Lefkoşa old town", cat: "Food", at: at(1, 20, 0), place: "Büyük Han, Lefkoşa (shared taxi from campus)", max: 5, desc: "Dinner at a local place near Büyük Han. Around 400 TL each.", hostUid: U("Elif"), memberUids: us("Elif", "Amaka", "Daniel") },
+    { id: "a4", title: "Board games night", cat: "Games", at: at(1, 18, 30), place: "Soli Dormitory", max: 8, desc: "Catan, Codenames and UNO. Snacks welcome.", hostUid: U("Daniel"), memberUids: us("Daniel", "Sara", "Aisha") },
+    { id: "a5", title: "Sunrise hike to St. Hilarion", cat: "Trips", at: at(3, 5, 30), place: "St. Hilarion Castle (two cars from campus)", max: 7, desc: "About 2 hours up and back. Wear proper shoes, it's rocky.", hostUid: U("Arda"), memberUids: us("Arda", "Musa") },
+    { id: "a6", title: "Beach day in Kyrenia", cat: "Chill", at: at(4, 11, 0), place: "Escape Beach, Kyrenia", max: 0, desc: "Escape Beach. Bus there, figure out the way back together.", hostUid: U("Zara"), memberUids: us("Zara", "Aisha", "Omar", "Leyla", "Kemal") },
   ].map((a) => ({ lastMsgAt: 0, ...a })),
   msgs: {
     a1: [
@@ -52,8 +52,14 @@ const state = {
     a2: [{ id: "m3", uid: U("Leyla"), text: "Bring the 2024 midterm if you have it", at: minsAgo(120) }],
   },
   reports: [],
+  reads: {},
 };
-state.acts.forEach((a) => (a.lastMsgAt = state.msgs[a.id]?.at(-1)?.at || 0));
+state.acts.forEach((a) => {
+  const last = state.msgs[a.id]?.at(-1);
+  a.lastMsgAt = last?.at || 0;
+  a.lastMsgUid = last?.uid || null;
+  a.createdAt = Date.now() - 86_400_000;
+});
 
 const subs = new Set();
 const emit = () => subs.forEach((f) => f());
@@ -101,7 +107,7 @@ export const demoBackend = {
   async createActivity(uid, data) {
     await tick();
     const id = `a${++seq}`;
-    state.acts = [...state.acts, { ...data, id, hostUid: uid, memberUids: [uid], lastMsgAt: 0 }];
+    state.acts = [...state.acts, { ...data, id, hostUid: uid, memberUids: [uid], lastMsgAt: 0, lastMsgUid: null, createdAt: Date.now() }];
     emit();
     return id;
   },
@@ -140,9 +146,18 @@ export const demoBackend = {
   async sendMessage(id, uid, text) {
     const m = { id: `m${++seq}`, uid, text, at: Date.now() };
     state.msgs = { ...state.msgs, [id]: [...(state.msgs[id] || []), m] };
-    updateAct(id, (a) => ({ ...a, lastMsgAt: m.at }));
+    updateAct(id, (a) => ({ ...a, lastMsgAt: m.at, lastMsgUid: uid }));
     emit();
   },
+
+  onReads: (uid, cb) => watch(() => cb(state.reads[uid] || {})),
+
+  async markRead(uid, id) {
+    state.reads = { ...state.reads, [uid]: { ...(state.reads[uid] || {}), [id]: Date.now() } };
+    emit();
+  },
+
+  countMessages: async () => Object.values(state.msgs).reduce((n, list) => n + list.length, 0),
 
   async report(uid, r) {
     await tick();

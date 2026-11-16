@@ -2,8 +2,8 @@ import { initializeApp } from "firebase/app";
 import {
   getAuth, connectAuthEmulator, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signInWithCredential, signInWithRedirect, signOut as fbSignOut } from "firebase/auth";
 import {
-  getFirestore, connectFirestoreEmulator, collection, doc, onSnapshot, query, where, orderBy, limitToLast,
-  addDoc, updateDoc, deleteDoc, getDocs, runTransaction, writeBatch,
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator, collection, collectionGroup, doc, onSnapshot, query, where, orderBy, limitToLast,
+  addDoc, setDoc, getCountFromServer, updateDoc, deleteDoc, getDocs, runTransaction, writeBatch,
   serverTimestamp, arrayUnion, arrayRemove,
 } from "firebase/firestore";
 import { HISTORY_MS } from "../lib/constants";
@@ -23,7 +23,8 @@ const config = {
 
 const app = initializeApp(config);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Кэш в IndexedDB: лента и чаты открываются мгновенно и без сети (PWA).
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 // Локальная разработка: VITE_USE_EMULATORS=1 и `firebase emulators:start`
 const useEmulators = env.VITE_USE_EMULATORS === "1";
 if (useEmulators) {
@@ -48,6 +49,8 @@ const mapActivity = (d) => {
     hostUid: x.hostUid,
     memberUids: x.memberUids || [],
     lastMsgAt: x.lastMsgAt ? toMs(x.lastMsgAt) : 0,
+    lastMsgUid: x.lastMsgUid || null,
+    createdAt: x.createdAt ? toMs(x.createdAt) : 0,
   };
 };
 
@@ -185,8 +188,24 @@ export const firebaseBackend = {
   async sendMessage(id, uid, text) {
     const batch = writeBatch(db);
     batch.set(doc(collection(db, "activities", id, "messages")), { uid, text, createdAt: serverTimestamp() });
-    batch.update(doc(db, "activities", id), { lastMsgAt: serverTimestamp() });
+    batch.update(doc(db, "activities", id), { lastMsgAt: serverTimestamp(), lastMsgUid: uid });
     await batch.commit();
+  },
+
+  // Когда пользователь последний раз открывал каждый чат (для счётчика непрочитанных).
+  onReads(uid, cb, onError) {
+    return onSnapshot(doc(db, "reads", uid), (s) => {
+      const at = s.data({ serverTimestamps: "estimate" })?.at || {};
+      cb(Object.fromEntries(Object.entries(at).map(([k, v]) => [k, toMs(v)])));
+    }, fail(onError));
+  },
+
+  markRead: (uid, id) => setDoc(doc(db, "reads", uid), { at: { [id]: serverTimestamp() } }, { merge: true }),
+
+  // Только для админов (правила): общее число сообщений во всех чатах.
+  async countMessages() {
+    const snap = await getCountFromServer(collectionGroup(db, "messages"));
+    return snap.data().count;
   },
 
   async report(uid, r) {

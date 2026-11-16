@@ -3,7 +3,7 @@ import { test, before, after, beforeEach } from "node:test";
 import { readFileSync } from "node:fs";
 import { initializeTestEnvironment, assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
 import {
-  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, collectionGroup, getDocs, getCountFromServer, query, where,
   serverTimestamp, arrayUnion, arrayRemove, writeBatch, runTransaction,
 } from "firebase/firestore";
 
@@ -120,7 +120,7 @@ test("chat: only members read and write, as themselves", async () => {
     const f = db(u);
     const b = writeBatch(f);
     b.set(doc(collection(f, "activities/a1/messages")), data);
-    b.update(doc(f, "activities/a1"), { lastMsgAt: serverTimestamp() });
+    b.update(doc(f, "activities/a1"), { lastMsgAt: serverTimestamp(), lastMsgUid: data.uid });
     return b.commit();
   };
   await assertSucceeds(send("bob", { uid: "bob", text: "hi", createdAt: serverTimestamp() }));
@@ -129,7 +129,9 @@ test("chat: only members read and write, as themselves", async () => {
   await assertFails(send("bob", { uid: "bob", text: "", createdAt: serverTimestamp() }));
   await assertSucceeds(getDocs(collection(db("alice"), "activities/a1/messages")));
   await assertFails(getDocs(collection(db("eve"), "activities/a1/messages")));
-  await assertFails(updateDoc(doc(db("eve"), "activities/a1"), { lastMsgAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(db("eve"), "activities/a1"), { lastMsgAt: serverTimestamp(), lastMsgUid: "eve" }));
+  // нельзя приписать последнее сообщение другому
+  await assertFails(updateDoc(doc(db("bob"), "activities/a1"), { lastMsgAt: serverTimestamp(), lastMsgUid: "alice" }));
 });
 
 test("chat: host can delete messages (for deleting the activity)", async () => {
@@ -151,4 +153,23 @@ test("reports: anyone with a profile files, only admins read/resolve", async () 
   const admin = db("mod", { admin: true });
   const snap = await assertSucceeds(getDocs(query(collection(admin, "reports"), where("status", "==", "open"))));
   await assertSucceeds(updateDoc(snap.docs[0].ref, { status: "resolved", resolvedAt: serverTimestamp() }));
+});
+
+// ---- непрочитанные ----
+test("reads: only your own read markers", async () => {
+  await assertSucceeds(setDoc(doc(db("alice"), "reads/alice"), { at: { a1: serverTimestamp() } }, { merge: true }));
+  await assertSucceeds(getDoc(doc(db("alice"), "reads/alice")));
+  await assertFails(getDoc(doc(db("bob"), "reads/alice")));
+  await assertFails(setDoc(doc(db("bob"), "reads/alice"), { at: {} }));
+  await assertFails(setDoc(doc(db("alice"), "reads/alice"), { at: {}, extra: 1 }));
+});
+
+// ---- статистика ----
+test("stats: only admins can count all messages", async () => {
+  await withProfiles("alice");
+  await seedActivity("a1", "alice");
+  await seed((f) => setDoc(doc(f, "activities/a1/messages/m1"), { uid: "alice", text: "hi", createdAt: new Date() }));
+  await assertFails(getCountFromServer(collectionGroup(db("alice"), "messages")));
+  const snap = await assertSucceeds(getCountFromServer(collectionGroup(db("mod", { admin: true }), "messages")));
+  if (snap.data().count !== 1) throw new Error("expected 1 message");
 });

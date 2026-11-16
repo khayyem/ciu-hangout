@@ -32,6 +32,7 @@ export function StoreProvider({ children }) {
   const dataKey = complete(profile) ? uid : null;
   const acts = useKeyed(dataKey, (cb, err) => backend.onActivities(cb, err));
   const people = useKeyed(dataKey, (cb, err) => backend.onUsers(cb, err));
+  const reads = useKeyed(dataKey, (cb, err) => backend.onReads(uid, cb, err));
   const reports = useKeyed(user?.isAdmin && dataKey ? uid : null, (cb, err) => backend.onReports(cb, err));
 
   const value = useMemo(() => {
@@ -39,6 +40,13 @@ export function StoreProvider({ children }) {
     if (user === null) me = null;
     // Профиль из старой версии приложения (без факультета/курса) считается незаполненным.
     else if (user && profile !== undefined) me = complete(profile) ? { ...profile, sid: priv?.sid || "" } : null;
+
+    // Чаты с новыми сообщениями от других участников, которые ты ещё не открывал.
+    const unread = new Set(
+      (acts || [])
+        .filter((a) => uid && a.memberUids.includes(uid) && a.lastMsgAt && a.lastMsgUid !== uid && a.lastMsgAt > (reads?.[a.id] || 0))
+        .map((a) => a.id),
+    );
 
     const need = () => {
       if (!uid) throw new Error("Please sign in first.");
@@ -53,6 +61,9 @@ export function StoreProvider({ children }) {
       actsReady: acts !== undefined,
       people: people || {},
       reports: reports || [],
+      unread,
+      markRead: (id) => uid && backend.markRead(uid, id),
+      countMessages: () => backend.countMessages(),
       signIn: () => backend.signIn(),
       signOut: () => backend.signOut(),
       saveProfile: (p, sid) => backend.saveProfile(need(), p, sid),
@@ -65,7 +76,7 @@ export function StoreProvider({ children }) {
       report: (r) => backend.report(need(), r),
       resolveReport: (id) => backend.resolveReport(id),
     };
-  }, [user, uid, profile, priv, acts, people, reports]);
+  }, [user, uid, profile, priv, acts, people, reports, reads]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }

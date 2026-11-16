@@ -3,6 +3,8 @@ import { useStore, useMessages, usePerson } from "../data/store";
 import { dayLabel, hhmm, spotsText, isMember, isFull } from "../lib/format";
 import { Avatar, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
+import { mapUrl } from "../lib/places";
+import { shareActivity, whatsappUrl } from "../lib/share";
 
 export function JoinButton({ a, onToggle, wide }) {
   const { me } = useStore();
@@ -99,7 +101,7 @@ function LastMessage({ a }) {
   return `${last.uid === me?.uid ? "You" : who.short}: ${last.text}`;
 }
 
-export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit, onDelete, onReport }) {
+export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit, onDelete, onReport, flash }) {
   const { me, isAdmin } = useStore();
   const inIt = isMember(a, me?.uid);
   const isHost = a.hostUid === me?.uid;
@@ -115,6 +117,23 @@ export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit,
         <div className="mt-1 text-muted break-words">
           {a.cat} · {a.place}
         </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-sm font-bold">
+        <button
+          onClick={async () => {
+            const r = await shareActivity(a);
+            if (r === "copied") flash?.("Link copied. Paste it in any chat.");
+          }}
+          className="px-4 py-2 rounded-full bg-ink text-white"
+        >
+          Share
+        </button>
+        <a href={whatsappUrl(a)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
+          WhatsApp
+        </a>
+        <a href={mapUrl(a.place)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
+          Map
+        </a>
       </div>
       <p className="mt-4 leading-relaxed whitespace-pre-line break-words">{a.desc || "No details yet."}</p>
 

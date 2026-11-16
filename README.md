@@ -34,6 +34,16 @@ npm run test:rules     # тесты правил Firestore (через firebase-
    (например `ciu-hangout.vercel.app`; для превью PR — их домены тоже).
 3. Vercel собирает `npm run build`, папка `dist`.
 
+## Возможности
+
+- Лента по дням, фильтры, Join прямо в ленте, групповой чат участников.
+- **Поделиться**: кнопки Share / WhatsApp в карточке; ссылка `/?a=<id>` открывает активность (и после входа).
+- **Непрочитанные**: счётчик на вкладке Chats и точка у чата (`reads/{uid}`, `lastMsgUid`).
+- **PWA**: установка на экран «Домой» (подсказка для iOS, кнопка Install на Android),
+  работа без сети: `public/sw.js` + офлайн-кэш Firestore.
+- **Места кампуса**: список подтверждённых мест CIU в `src/lib/places.js` + «Somewhere else», кнопка Map.
+- **Статистика** для модераторов: Profile → Open stats.
+
 ## Модерация
 
 Кнопка Report на активности и в карточке человека пишет в коллекцию `reports`.
@@ -62,6 +72,7 @@ prototype/                исходный утверждённый протот
 | `users_private/{uid}` | sid (Student ID, 6–10 цифр) | только владелец |
 | `activities/{id}` | title, cat, at (ms), place, max, desc, hostUid, memberUids[], createdAt, lastMsgAt | читают студенты с профилем; join/leave только за себя и с проверкой лимита |
 | `activities/{id}/messages/{id}` | uid, text, createdAt | только участники |
+| `reads/{uid}` | at.{activityId} — когда открывал чат | только владелец |
 | `reports/{id}` | type, targetId, targetTitle, reason, details, reporterUid, status | создают все, читают админы |
 
 Фото профиля уменьшается до 256×256 JPEG и хранится в `photoURL` как data URL (Storage/Blaze не нужен).
