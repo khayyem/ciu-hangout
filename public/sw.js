@@ -1,7 +1,7 @@
 // Service worker CIU Hangout: оболочка приложения работает без сети,
 // данные Firestore кэширует сам SDK (persistentLocalCache).
-const CACHE = "hangout-shell-v2";
-const SHELL = ["/", "/manifest.json", "/ciu-logo.png", "/icon-192.png", "/icon-512.png"];
+const CACHE = "hangout-shell-v3";
+const SHELL = ["/", "/manifest.json", "/ciu-logo.png", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
