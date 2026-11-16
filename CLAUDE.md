@@ -17,13 +17,13 @@ Software Department CIU позвал команду на встречу **во �
 К встрече нужно рабочее приложение по ссылке, которое можно показать на телефоне.
 
 ## Состояние репозитория
-- `src/` — старая версия (React + Vite + Firebase + Google Auth, мультиязычность, PWA),
-  задеплоена на ciu-hangout.vercel.app. Её решено переделать с нуля по новому дизайну.
-- `prototype/hangout.jsx` — **новый утверждённый прототип**. Один файл, React, Tailwind-классы,
-  данные только в памяти (мок). Это эталон дизайна и функций.
-- `prototype/ciu-logo.png` — официальный логотип CIU, уже обрезан, фон прозрачный.
-  В прототипе он вшит base64-строкой в `CIU_LOGO_SRC`; в проекте положи файл в `public/`
-  и используй путь `/ciu-logo.png`.
+- `src/` — **новая версия по прототипу** (ветка `claude/vibrant-wright-2oo598`): компоненты в
+  `src/components`, Tailwind v4 с палитрой в `src/index.css` (`bg-grove`, `text-tangerine`…),
+  данные через `src/data/store.jsx` поверх `firebaseBackend.js` (Firestore) или `demoBackend.js` (`/?demo`).
+- `firestore.rules` + тесты `tests/firestore.rules.test.mjs` (`npm run test:rules`). Правила нужно
+  задеплоить: `npx firebase-tools deploy --only firestore:rules`.
+- `prototype/hangout.jsx` — исходный утверждённый прототип, эталон дизайна и функций.
+- Логотип — `public/ciu-logo.png`.
 
 ## Что есть в прототипе (сохранить при переносе)
 - Шапка: логотип CIU + слово «hangout», кнопка Create.
@@ -48,6 +48,11 @@ Software Department CIU позвал команду на встречу **во �
 - Не менять стиль без просьбы автора.
 
 ## Что сделать (по приоритету)
+Сделано: 1 (перенос), 2 (Firebase, транзакции, правила; фото — data URL 256px в профиле),
+3 (Google Auth + обязательный профиль), 4 (Report, коллекция `reports`, раздел модерации в Profile
+для custom claim `admin`, `scripts/set-admin.mjs`), 6 (хост редактирует/удаляет, прошедшие скрываются
+через 2 часа). Осталось: ограничение входа доменом почты CIU, пуши (5).
+
 1. **Перенести прототип в этот Vite-проект** вместо старого UI в `src/`, разбив на компоненты.
    Tailwind подключить нормально (сейчас в прототипе классы Tailwind).
 2. **Firebase**: Auth + Firestore с реалтаймом.
