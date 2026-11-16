@@ -2,6 +2,9 @@ import { useState } from "react";
 import { CATS, DEPTS, MAX_OPTIONS, REPORT_REASONS, YEARS } from "../lib/constants";
 import { firstName, toDateInput, toTimeInput } from "../lib/format";
 import { resizeImage } from "../lib/image";
+import { CAMPUS_PLACES, isCampusPlace } from "../lib/places";
+
+const OTHER = "__other";
 import { useNow } from "../lib/useNow";
 import { Avatar, ErrorText, Field, Sheet, fieldClass } from "./ui";
 
@@ -128,8 +131,17 @@ export function ActivityForm({ initial, onClose, onSubmit }) {
   const editing = !!initial;
   const [f, , set] = useForm(
     initial
-      ? { title: initial.title, cat: initial.cat, date: toDateInput(initial.at), time: toTimeInput(initial.at), place: initial.place, max: String(initial.max || 0), desc: initial.desc }
-      : { title: "", cat: "Chill", date: today, time: "19:00", place: "", max: "6", desc: "" },
+      ? {
+          title: initial.title,
+          cat: initial.cat,
+          date: toDateInput(initial.at),
+          time: toTimeInput(initial.at),
+          spot: isCampusPlace(initial.place) ? initial.place : OTHER,
+          place: isCampusPlace(initial.place) ? "" : initial.place,
+          max: String(initial.max || 0),
+          desc: initial.desc,
+        }
+      : { title: "", cat: "Chill", date: today, time: "19:00", spot: "", place: "", max: "6", desc: "" },
   );
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -140,10 +152,10 @@ export function ActivityForm({ initial, onClose, onSubmit }) {
   const submit = async (e) => {
     e.preventDefault();
     const title = f.title.trim();
-    const place = f.place.trim();
+    const place = f.spot === OTHER ? f.place.trim() : f.spot;
     if (!title) return setErr('Add a title, like "Football at 7".');
     if (title.length > 80) return setErr("Keep the title under 80 characters.");
-    if (!place) return setErr("Add where people should meet.");
+    if (!place) return setErr(f.spot === OTHER ? "Type where people should meet." : "Choose where people should meet.");
     if (place.length > 120) return setErr("Keep the place under 120 characters.");
     const ts = new Date(`${f.date}T${f.time}`).getTime();
     if (!ts || ts < Date.now() - 5 * 60_000) return setErr("Pick a time that hasn't passed yet.");
@@ -187,8 +199,31 @@ export function ActivityForm({ initial, onClose, onSubmit }) {
             </Field>
           </div>
           <Field label="Where">
-            <input className={fieldClass} value={f.place} onChange={set("place")} maxLength={120} placeholder="e.g. Main gate, library, Dorm B" />
+            <select className={fieldClass} value={f.spot} onChange={set("spot")}>
+              <option value="">Choose a place</option>
+              {CAMPUS_PLACES.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.places.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value={OTHER}>Somewhere else…</option>
+            </select>
           </Field>
+          {f.spot === OTHER && (
+            <input
+              className={fieldClass}
+              value={f.place}
+              onChange={set("place")}
+              maxLength={120}
+              placeholder="e.g. Kyrenia harbour, a café in Lefkoşa"
+              aria-label="Place"
+              autoFocus
+            />
+          )}
           <Field label="How many people, including you">
             <select className={fieldClass} value={f.max} onChange={set("max")}>
               {maxOptions.sort((a, b) => a - b).map((n) => (

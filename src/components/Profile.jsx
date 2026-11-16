@@ -110,7 +110,7 @@ function ReportItem({ r, onOpen, onDeleteActivity }) {
   );
 }
 
-export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteActivity }) {
+export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteActivity, onStats }) {
   const { me, acts, isAdmin, reports } = useStore();
   const now = useNow();
   const upcoming = acts.filter((a) => isMember(a, me.uid) && a.at > now).sort((x, y) => x.at - y.at);
@@ -162,6 +162,9 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
 
       {isAdmin && (
         <div className="mt-8">
+          <button onClick={onStats} className="w-full mb-5 font-bold py-3 rounded-full bg-grove text-white">
+            Open stats
+          </button>
           <div className="font-bold">
             Reports to review{reports.length ? ` (${reports.length})` : ""}
           </div>

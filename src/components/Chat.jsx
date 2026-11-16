@@ -22,8 +22,13 @@ function Bubble({ m, mine, onPerson }) {
 }
 
 export function ChatScreen({ a, onClose, onPerson, flash }) {
-  const { me, sendMessage } = useStore();
+  const { me, sendMessage, markRead } = useStore();
   const msgs = useMessages(a.id);
+  // Чат открыт — всё, что в нём есть, считается прочитанным (и новые сообщения тоже).
+  useEffect(() => {
+    markRead(a.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [a.id, a.lastMsgAt]);
   const [msg, setMsg] = useState("");
   const end = useRef(null);
   const count = msgs?.length || 0;
@@ -84,7 +89,8 @@ export function ChatScreen({ a, onClose, onPerson, flash }) {
 }
 
 function ChatRow({ a, onChat }) {
-  const { me } = useStore();
+  const { me, unread } = useStore();
+  const isNew = unread.has(a.id);
   const msgs = useMessages(a.id, 1);
   const last = msgs?.[0];
   const who = usePerson(last?.uid);
@@ -97,10 +103,12 @@ function ChatRow({ a, onChat }) {
       <div className="flex-1 min-w-0">
         <div className="flex justify-between gap-2">
           <span className="font-bold truncate">{a.title}</span>
-          {last && <span className="text-xs shrink-0 text-muted">{hhmm(last.at)}</span>}
+          {last && <span className={`text-xs shrink-0 ${isNew ? "text-tangerine font-bold" : "text-muted"}`}>{hhmm(last.at)}</span>}
         </div>
-        <div className="text-sm truncate text-muted">
-          {last ? `${last.uid === me.uid ? "You" : who.short}: ${last.text}` : `${a.memberUids.length} ${a.memberUids.length === 1 ? "person" : "people"} · no messages yet`}
+        <div className={`text-sm truncate flex items-center gap-2 ${isNew ? "text-ink font-semibold" : "text-muted"}`}>
+          {isNew && <span className="w-2.5 h-2.5 rounded-full bg-tangerine shrink-0" aria-label="New messages" />}
+          <span className="truncate">
+          {last ? `${last.uid === me.uid ? "You" : who.short}: ${last.text}` : `${a.memberUids.length} ${a.memberUids.length === 1 ? "person" : "people"} · no messages yet`}</span>
         </div>
       </div>
     </button>

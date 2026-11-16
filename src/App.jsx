@@ -1,9 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "./data/store";
 import { CATS, FEED_GRACE_MS } from "./lib/constants";
 import { dayLabel, isMember } from "./lib/format";
 import { useNow } from "./lib/useNow";
-import { CiuMark, EmptyState, Splash } from "./components/ui";
+import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
+import { InstallBanner, OfflineBar } from "./components/Banners";
+import { StatsSheet } from "./components/Stats";
+import { clearPendingActivity, pendingActivityId } from "./lib/share";
 import { ActivityDetail, ActivityRow } from "./components/Activity";
 import { ChatScreen, ChatsTab } from "./components/Chat";
 import { ActivityForm, ConfirmSheet, ProfileForm, ReportSheet } from "./components/Forms";
@@ -56,7 +59,10 @@ function Main() {
   const { me, acts, actsReady, mode } = store;
   const [tab, setTab] = useState("explore");
   const [cat, setCat] = useState("All");
-  const [openId, setOpenId] = useState(null);
+  // Открыли ссылку /?a=<id> — сразу показываем эту активность (в том числе после входа).
+  const [openId, setOpenId] = useState(pendingActivityId);
+  useEffect(() => clearPendingActivity(), []);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [chatId, setChatId] = useState(null);
   const [personUid, setPersonUid] = useState(null);
   const [form, setForm] = useState(null); // { activity? } — создание или редактирование
@@ -130,10 +136,12 @@ function Main() {
   const open = acts.find((a) => a.id === openId);
   const chat = acts.find((a) => a.id === chatId && isMember(a, me.uid));
   const chatCount = acts.filter((a) => isMember(a, me.uid)).length;
+  const unreadCount = store.unread.size;
 
   return (
     <div className="min-h-dvh pb-24 bg-white text-ink">
       {mode === "demo" && <DemoBanner />}
+      <OfflineBar />
       <header className="max-w-3xl mx-auto px-4 md:px-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
@@ -149,6 +157,7 @@ function Main() {
         {tab === "explore" && (
           <>
             <p className="mt-2 text-muted">What CIU students are doing. Join in or start something.</p>
+            <InstallBanner />
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
               {["All", ...CATS].map((c) => (
                 <button
@@ -198,6 +207,7 @@ function Main() {
             }}
             onAdminOpen={({ person, activity }) => (person ? setPersonUid(person) : setOpenId(activity))}
             onDeleteActivity={setConfirmDelete}
+            onStats={() => setStatsOpen(true)}
           />
         )}
       </main>
@@ -206,7 +216,17 @@ function Main() {
         <div className="max-w-3xl mx-auto grid grid-cols-3">
           {[
             ["explore", "Activities"],
-            ["chats", `Chats${chatCount ? ` (${chatCount})` : ""}`],
+            [
+              "chats",
+              <span key="c" className="inline-flex items-center gap-1.5">
+                {unreadCount ? "Chats" : `Chats${chatCount ? ` (${chatCount})` : ""}`}
+                {unreadCount > 0 && (
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-tangerine text-ink text-xs leading-5 tabular" aria-label={`${unreadCount} unread`}>
+                    {unreadCount}
+                  </span>
+                )}
+              </span>,
+            ],
             ["profile", "Profile"],
           ].map(([id, label]) => (
             <button
@@ -239,8 +259,19 @@ function Main() {
           }}
           onDelete={setConfirmDelete}
           onReport={setReportTarget}
+          flash={flash}
         />
       )}
+      {openId && actsReady && !open && (
+        <Sheet onClose={() => setOpenId(null)} label="Not available">
+          <h2 className="text-2xl font-extrabold pr-10">This activity isn't available</h2>
+          <p className="mt-2 text-muted">It may have ended or been removed by the host.</p>
+          <button onClick={() => setOpenId(null)} className="mt-5 w-full font-bold py-3 rounded-full bg-ink text-white">
+            See what's on
+          </button>
+        </Sheet>
+      )}
+      {statsOpen && <StatsSheet onClose={() => setStatsOpen(false)} />}
       {chat && <ChatScreen a={chat} onClose={() => setChatId(null)} onPerson={setPersonUid} flash={flash} />}
       {personUid && <PersonCard uid={personUid} onClose={() => setPersonUid(null)} onReport={setReportTarget} />}
       {form && <ActivityForm initial={form.activity} onClose={() => setForm(null)} onSubmit={submitActivity} />}

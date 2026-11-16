@@ -106,9 +106,11 @@ service cloud.firestore {
     // Участник отправил сообщение — обновляем время последнего сообщения (для сортировки чатов).
     function touchingChat() {
       return signedIn()
-        && changed().hasOnly(['lastMsgAt'])
+        && changed().hasOnly(['lastMsgAt', 'lastMsgUid'])
         && resource.data.memberUids.hasAny([me()])
-        && request.resource.data.lastMsgAt == request.time;
+        && request.resource.data.lastMsgAt == request.time
+        // lastMsgUid — кто написал последним; старые клиенты его не присылают.
+        && (!changed().hasAny(['lastMsgUid']) || request.resource.data.lastMsgUid == me());
     }
 
     // ---------- Групповой чат ----------
@@ -124,6 +126,22 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time;
       allow update: if false;
       allow delete: if isAdmin() || (signedIn() && activity().hostUid == me());
+    }
+
+    // Админская статистика: подсчёт сообщений во всех чатах (collection group).
+    match /{path=**}/messages/{msgId} {
+      allow read: if isAdmin();
+    }
+
+    // ---------- Прочитанные чаты ----------
+    // reads/{uid}.at.{activityId} = время, когда пользователь последний раз открывал чат.
+    match /reads/{uid} {
+      allow read: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at is map
+        && request.resource.data.at.size() <= 1000;
+      allow delete: if signedIn() && me() == uid;
     }
 
     // ---------- Жалобы ----------
