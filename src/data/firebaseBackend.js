@@ -13,12 +13,12 @@ import { HISTORY_MS } from "../lib/constants";
 // чтобы деплой работал и без настроенных переменных.
 const env = import.meta.env;
 const config = {
-  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDISzgCehbIiKAS4A3FuY7vJFai5nyyA2s",
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "ciu-hangout-a7457.firebaseapp.com",
-  projectId: env.VITE_FIREBASE_PROJECT_ID || "ciu-hangout-a7457",
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "ciu-hangout-a7457.firebasestorage.app",
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "546602904671",
-  appId: env.VITE_FIREBASE_APP_ID || "1:546602904671:web:ac554a2ea182c8546abfea",
+  apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyDpLWpZyLmQIaGqcQ1Yv1t17w3Es3pOsBg",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "ciu-hangout-app.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "ciu-hangout-app",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "ciu-hangout-app.firebasestorage.app",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "259207621004",
+  appId: env.VITE_FIREBASE_APP_ID || "1:259207621004:web:b9c5b0e987c19330b6cea9",
 };
 
 const app = initializeApp(config);
