@@ -28,3 +28,5 @@ dist-ssr
 service-account*.json
 .firebase
 .env
+firestore-debug.log
+*-debug.log

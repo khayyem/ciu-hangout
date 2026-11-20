@@ -1,27 +1,28 @@
 import { useState } from "react";
 import { useStore, useMessages, usePerson } from "../data/store";
-import { dayLabel, hhmm, spotsText, isMember, isFull } from "../lib/format";
+import { dayLabel, hhmm, spotsText, isMember, isFull, isWaiting } from "../lib/format";
 import { Avatar, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
 import { mapUrl } from "../lib/places";
 import { shareActivity, whatsappUrl } from "../lib/share";
 
-export function JoinButton({ a, onToggle, wide }) {
+export function JoinButton({ a, onToggle, onWait, wide }) {
   const { me } = useStore();
   const [busy, setBusy] = useState(false);
   const going = isMember(a, me?.uid);
   const isHost = a.hostUid === me?.uid;
   const base = `font-bold rounded-full whitespace-nowrap ${wide ? "w-full py-3" : "px-4 py-2 text-sm"} ${busy ? "opacity-60" : ""}`;
-  const click = async (e) => {
+  const run = (fn) => async (e) => {
     e.stopPropagation();
-    if (busy) return;
+    if (busy || !fn) return;
     setBusy(true);
     try {
-      await onToggle(a);
+      await fn(a);
     } finally {
       setBusy(false);
     }
   };
+  const click = run(onToggle);
 
   if (isHost) return <span className={`${base} text-center block bg-mist text-grove`}>Hosting</span>;
   if (going)
@@ -30,7 +31,18 @@ export function JoinButton({ a, onToggle, wide }) {
         {wide ? "Leave activity" : "Going"}
       </button>
     );
-  if (isFull(a)) return <span className={`${base} text-center block bg-mist text-muted`}>Full</span>;
+  if (isWaiting(a, me?.uid))
+    return (
+      <button onClick={run(onWait)} disabled={busy} className={`${base} bg-mist ${wide ? "text-danger" : "text-grove"}`}>
+        {wide ? "Leave waitlist" : "Waitlisted"}
+      </button>
+    );
+  if (isFull(a))
+    return (
+      <button onClick={run(onWait)} disabled={busy} className={`${base} border-2 border-line text-ink ${wide ? "bg-mist border-mist" : "bg-white"}`}>
+        {wide ? "Join the waitlist" : "Waitlist"}
+      </button>
+    );
   return (
     <button onClick={click} disabled={busy} className={`${base} border-2 border-tangerine text-ink ${wide ? "bg-tangerine" : "bg-white"}`}>
       {wide ? "Join and open group chat" : "Join"}
@@ -47,7 +59,7 @@ function MemberAvatar({ uid, size, ring, offset }) {
   );
 }
 
-export function ActivityRow({ a, onOpen, onToggle }) {
+export function ActivityRow({ a, onOpen, onToggle, onWait }) {
   const s = spotsText(a);
   return (
     <div
@@ -74,7 +86,7 @@ export function ActivityRow({ a, onOpen, onToggle }) {
         </div>
       </div>
       <div className="shrink-0 pt-0.5">
-        <JoinButton a={a} onToggle={onToggle} />
+        <JoinButton a={a} onToggle={onToggle} onWait={onWait} />
       </div>
     </div>
   );
@@ -93,15 +105,16 @@ function MemberChip({ uid, a, onPerson }) {
 }
 
 function LastMessage({ a }) {
-  const { me } = useStore();
+  const { me, blocked } = useStore();
   const msgs = useMessages(a.id, 1);
   const last = msgs?.[0];
   const who = usePerson(last?.uid);
   if (!last) return "No messages yet. Say hi and agree where to meet.";
+  if (blocked.has(last.uid)) return "Message hidden";
   return `${last.uid === me?.uid ? "You" : who.short}: ${last.text}`;
 }
 
-export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit, onDelete, onReport, flash }) {
+export function ActivityDetail({ a, onClose, onToggle, onWait, onChat, onPerson, onEdit, onDelete, onReport, flash }) {
   const { me, isAdmin } = useStore();
   const inIt = isMember(a, me?.uid);
   const isHost = a.hostUid === me?.uid;
@@ -140,6 +153,7 @@ export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit,
       <div className="mt-5">
         <div className="font-bold">
           {a.memberUids.length} going{a.max ? ` of ${a.max}` : ""}
+          {a.waitUids?.length ? <span className="font-normal text-muted"> · {a.waitUids.length} on the waitlist</span> : null}
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           {a.memberUids.map((uid) => (
@@ -157,9 +171,17 @@ export function ActivityDetail({ a, onClose, onToggle, onChat, onPerson, onEdit,
         </button>
       )}
       <div className="mt-3">
-        <JoinButton a={a} onToggle={onToggle} wide />
+        <JoinButton a={a} onToggle={onToggle} onWait={onWait} wide />
       </div>
-      {!inIt && <p className="text-sm text-center mt-2 text-muted">Everyone who joins gets added to the group chat.</p>}
+      {!inIt && (
+        <p className="text-sm text-center mt-2 text-muted">
+          {isWaiting(a, me?.uid)
+            ? `You're #${a.waitUids.indexOf(me.uid) + 1} in line. If someone leaves, you're in automatically.`
+            : isFull(a)
+              ? "It's full. Join the waitlist and you'll get the next free spot."
+              : "Everyone who joins gets added to the group chat."}
+        </p>
+      )}
 
       <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 justify-center text-sm font-semibold">
         {isHost && (

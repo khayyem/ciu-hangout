@@ -43,6 +43,10 @@ npm run test:rules     # тесты правил Firestore (через firebase-
   работа без сети: `public/sw.js` + офлайн-кэш Firestore.
 - **Места кампуса**: список подтверждённых мест CIU в `src/lib/places.js` + «Somewhere else», кнопка Map.
 - **Статистика** для модераторов: Profile → Open stats.
+- **Лист ожидания**: если мест нет — Waitlist; когда кто-то выходит, место получает первый в очереди
+  (`waitUids`, переходы в `src/lib/membership.js`, проверка в правилах).
+- **Блокировка**: Block в карточке человека скрывает его активности и сообщения (`blocks/{uid}`).
+- **Стартовые активности** для модератора: Profile → Starter activities (`src/lib/starters.js`).
 
 ## Модерация
 
@@ -72,6 +76,7 @@ prototype/                исходный утверждённый протот
 | `users_private/{uid}` | sid (Student ID, 6–10 цифр) | только владелец |
 | `activities/{id}` | title, cat, at (ms), place, max, desc, hostUid, memberUids[], createdAt, lastMsgAt | читают студенты с профилем; join/leave только за себя и с проверкой лимита |
 | `activities/{id}/messages/{id}` | uid, text, createdAt | только участники |
+| `blocks/{uid}` | uids — кого скрыть | только владелец |
 | `reads/{uid}` | at.{activityId} — когда открывал чат | только владелец |
 | `reports/{id}` | type, targetId, targetTitle, reason, details, reporterUid, status | создают все, читают админы |
 

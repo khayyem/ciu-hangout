@@ -3,6 +3,7 @@ import { useStore, usePerson } from "../data/store";
 import { dayLabel, hhmm, isMember } from "../lib/format";
 import { Avatar, CiuMark, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
+import { STARTER_TITLES, starterActivities } from "../lib/starters";
 
 export function SignIn({ onDemo }) {
   const { signIn } = useStore();
@@ -43,8 +44,9 @@ export function SignIn({ onDemo }) {
   );
 }
 
-export function PersonCard({ uid, onClose, onReport }) {
-  const { me, acts } = useStore();
+export function PersonCard({ uid, onClose, onReport, flash }) {
+  const { me, acts, blocked, block, unblock } = useStore();
+  const isBlocked = blocked.has(uid);
   const p = usePerson(uid);
   const isMe = uid === me?.uid;
   const now = useNow();
@@ -63,10 +65,32 @@ export function PersonCard({ uid, onClose, onReport }) {
         Hosting {hosting} upcoming {hosting === 1 ? "activity" : "activities"}
       </p>
       {!isMe && (
-        <button onClick={() => onReport({ type: "user", targetId: uid, targetTitle: p.name })} className="mt-4 text-sm font-semibold text-muted underline underline-offset-4">
-          Report
-        </button>
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={async () => {
+              try {
+                if (isBlocked) {
+                  await unblock(uid);
+                  flash?.(`${p.short} is unblocked`);
+                } else {
+                  await block(uid);
+                  flash?.(`Blocked. You won't see ${p.short}'s activities or messages.`);
+                  onClose();
+                }
+              } catch (e) {
+                flash?.(e.message || "Something went wrong");
+              }
+            }}
+            className={`flex-1 font-bold py-3 rounded-full bg-mist ${isBlocked ? "text-ink" : "text-danger"}`}
+          >
+            {isBlocked ? "Unblock" : "Block"}
+          </button>
+          <button onClick={() => onReport({ type: "user", targetId: uid, targetTitle: p.name })} className="flex-1 font-bold py-3 rounded-full bg-mist">
+            Report
+          </button>
+        </div>
       )}
+      {isBlocked && <p className="mt-2 text-sm text-center text-muted">You've blocked {p.short}. Their activities and messages are hidden.</p>}
     </Sheet>
   );
 }
@@ -110,7 +134,73 @@ function ReportItem({ r, onOpen, onDeleteActivity }) {
   );
 }
 
-export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteActivity, onStats }) {
+function StarterControls({ flash }) {
+  const { me, acts, createActivity, deleteActivity } = useStore();
+  const [busy, setBusy] = useState(false);
+  const now = useNow();
+  const mine = acts.filter((a) => a.hostUid === me.uid && STARTER_TITLES.has(a.title) && a.at > now);
+  const run = async (fn, done) => {
+    setBusy(true);
+    try {
+      await fn();
+      flash(done);
+    } catch (e) {
+      flash(e.message || "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const add = () =>
+    run(async () => {
+      const have = new Set(mine.map((a) => a.title));
+      for (const a of starterActivities()) if (!have.has(a.title)) await createActivity(a);
+    }, "Starter activities added to the feed");
+  const remove = () => run(async () => Promise.all(mine.map((a) => deleteActivity(a.id))), "Starter activities removed");
+  return (
+    <div className="mb-6 p-4 rounded-2xl border border-line">
+      <div className="font-bold">Starter activities</div>
+      <p className="mt-1 text-sm text-muted">
+        Adds {STARTER_TITLES.size} activities at campus places over the next days, hosted by you, so the feed isn't empty. Real people can join them.
+      </p>
+      <div className="mt-3 flex gap-2 text-sm font-bold">
+        <button onClick={add} disabled={busy || mine.length >= STARTER_TITLES.size} className={`px-4 py-2 rounded-full bg-ink text-white ${busy || mine.length >= STARTER_TITLES.size ? "opacity-50" : ""}`}>
+          {mine.length ? "Add missing" : "Add to feed"}
+        </button>
+        {mine.length > 0 && (
+          <button onClick={remove} disabled={busy} className={`px-4 py-2 rounded-full bg-mist text-danger ${busy ? "opacity-50" : ""}`}>
+            Remove ({mine.length})
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BlockedList({ flash }) {
+  const { blocked, unblock, people } = useStore();
+  if (!blocked.size) return null;
+  return (
+    <div className="mt-6">
+      <div className="font-bold">Blocked</div>
+      {[...blocked].map((uid) => (
+        <div key={uid} className="flex items-center justify-between gap-3 py-2 border-b border-line">
+          <span className="truncate">{people[uid]?.name || "CIU student"}</span>
+          <button
+            onClick={async () => {
+              await unblock(uid);
+              flash("Unblocked");
+            }}
+            className="text-sm font-bold px-3 py-1.5 rounded-full bg-mist"
+          >
+            Unblock
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteActivity, onStats, flash }) {
   const { me, acts, isAdmin, reports } = useStore();
   const now = useNow();
   const upcoming = acts.filter((a) => isMember(a, me.uid) && a.at > now).sort((x, y) => x.at - y.at);
@@ -165,6 +255,7 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
           <button onClick={onStats} className="w-full mb-5 font-bold py-3 rounded-full bg-grove text-white">
             Open stats
           </button>
+          <StarterControls flash={flash} />
           <div className="font-bold">
             Reports to review{reports.length ? ` (${reports.length})` : ""}
           </div>
@@ -175,6 +266,8 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
           )}
         </div>
       )}
+
+      <BlockedList flash={flash} />
 
       <div className="mt-6 flex gap-3">
         <button onClick={onEdit} className="flex-1 font-bold py-3 rounded-full bg-mist">

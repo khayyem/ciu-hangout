@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "./data/store";
 import { CATS, FEED_GRACE_MS } from "./lib/constants";
-import { dayLabel, isMember } from "./lib/format";
+import { dayLabel, isMember, isWaiting } from "./lib/format";
 import { useNow } from "./lib/useNow";
 import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
 import { InstallBanner, OfflineBar } from "./components/Banners";
@@ -97,6 +97,20 @@ function Main() {
     }
   };
 
+  const toggleWait = async (a) => {
+    try {
+      if (isWaiting(a, me.uid)) {
+        await store.leaveWaitlist(a.id);
+        flash("You left the waitlist");
+      } else {
+        await store.joinWaitlist(a.id);
+        flash(`You're on the waitlist (#${(a.waitUids?.length || 0) + 1}). We'll add you if a spot opens.`);
+      }
+    } catch (e) {
+      flash(e.message || "Something went wrong");
+    }
+  };
+
   const submitActivity = async (data) => {
     if (form?.activity) {
       await store.updateActivity(form.activity.id, data);
@@ -122,7 +136,13 @@ function Main() {
   };
 
   const groups = useMemo(() => {
-    const list = acts.filter((a) => a.at > now - FEED_GRACE_MS && (cat === "All" || a.cat === cat));
+    // Активности заблокированных людей не показываем (кроме тех, где ты уже участник).
+    const list = acts.filter(
+      (a) =>
+        a.at > now - FEED_GRACE_MS &&
+        (cat === "All" || a.cat === cat) &&
+        (!store.blocked.has(a.hostUid) || isMember(a, me.uid)),
+    );
     const g = [];
     list.forEach((a) => {
       const label = dayLabel(a.at);
@@ -131,7 +151,8 @@ function Main() {
       else g.push({ label, items: [a] });
     });
     return g;
-  }, [acts, cat, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acts, cat, now, store.blocked]);
 
   const open = acts.find((a) => a.id === openId);
   const chat = acts.find((a) => a.id === chatId && isMember(a, me.uid));
@@ -192,7 +213,7 @@ function Main() {
               <section key={g.label} className="mt-7">
                 <h2 className="text-sm font-bold pb-2 border-b-2 border-ink text-grove">{g.label}</h2>
                 {g.items.map((a) => (
-                  <ActivityRow key={a.id} a={a} onOpen={setOpenId} onToggle={toggle} />
+                  <ActivityRow key={a.id} a={a} onOpen={setOpenId} onToggle={toggle} onWait={toggleWait} />
                 ))}
               </section>
             ))
@@ -208,6 +229,7 @@ function Main() {
             onAdminOpen={({ person, activity }) => (person ? setPersonUid(person) : setOpenId(activity))}
             onDeleteActivity={setConfirmDelete}
             onStats={() => setStatsOpen(true)}
+            flash={flash}
           />
         )}
       </main>
@@ -248,6 +270,7 @@ function Main() {
           a={open}
           onClose={() => setOpenId(null)}
           onToggle={toggle}
+          onWait={toggleWait}
           onChat={(id) => {
             setOpenId(null);
             setChatId(id);
@@ -273,7 +296,7 @@ function Main() {
       )}
       {statsOpen && <StatsSheet onClose={() => setStatsOpen(false)} />}
       {chat && <ChatScreen a={chat} onClose={() => setChatId(null)} onPerson={setPersonUid} flash={flash} />}
-      {personUid && <PersonCard uid={personUid} onClose={() => setPersonUid(null)} onReport={setReportTarget} />}
+      {personUid && <PersonCard uid={personUid} onClose={() => setPersonUid(null)} onReport={setReportTarget} flash={flash} />}
       {form && <ActivityForm initial={form.activity} onClose={() => setForm(null)} onSubmit={submitActivity} />}
       {editingProfile && (
         <ProfileForm
