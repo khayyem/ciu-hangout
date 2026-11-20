@@ -79,7 +79,8 @@ export const firebaseBackend = {
       if (!u) return cb(null);
       let isAdmin = false;
       try {
-        isAdmin = (await u.getIdTokenResult()).claims.admin === true;
+        // true — свежий токен с сервера: роль модератора видна сразу, без повторного входа.
+        isAdmin = (await u.getIdTokenResult(true)).claims.admin === true;
       } catch {
         /* нет сети — считаем обычным пользователем */
       }
