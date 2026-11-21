@@ -6,6 +6,7 @@ import { useNow } from "./lib/useNow";
 import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
 import { InstallBanner, OfflineBar } from "./components/Banners";
 import { StatsSheet } from "./components/Stats";
+import { CategoryTiles } from "./components/Categories";
 import { clearPendingActivity, pendingActivityId } from "./lib/share";
 import { ActivityDetail, ActivityRow } from "./components/Activity";
 import { ChatScreen, ChatsTab } from "./components/Chat";
@@ -179,19 +180,17 @@ function Main() {
           <>
             <p className="mt-2 text-muted">What CIU students are doing. Join in or start something.</p>
             <InstallBanner />
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 [scrollbar-width:none]">
-              {["All", ...CATS].map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCat(c)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap border ${
-                    cat === c ? "bg-grove text-white border-grove" : "border-line text-ink"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="mt-4">
+              <CategoryTiles cats={CATS} value={cat} onChange={setCat} />
             </div>
+            {cat !== "All" && (
+              <div className="mt-3 text-sm">
+                <span className="text-muted">Showing {cat} only · </span>
+                <button onClick={() => setCat("All")} className="font-bold underline underline-offset-4">
+                  Show all
+                </button>
+              </div>
+            )}
           </>
         )}
         {tab === "chats" && <h2 className="mt-5 text-xl font-extrabold">Group chats</h2>}
