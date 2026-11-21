@@ -1,4 +1,5 @@
 import { activityUrl } from "./share";
+import { t } from "./i18n";
 
 const DURATION = 2 * 3600_000; // длительность по умолчанию — у активностей нет времени окончания
 
@@ -21,12 +22,12 @@ export function icsText(a) {
     `DTEND:${utc(a.at + DURATION)}`,
     `SUMMARY:${esc(a.title)}`,
     `LOCATION:${esc(a.place)}`,
-    `DESCRIPTION:${esc(`${a.desc ? `${a.desc}\n\n` : ""}Group chat on CIU Hangout: ${url}`)}`,
+    `DESCRIPTION:${esc(`${a.desc ? `${a.desc}\n\n` : ""}${t("Group chat on CIU Hangout:")} ${url}`)}`,
     `URL:${url}`,
     "BEGIN:VALARM",
     "TRIGGER:-PT1H",
     "ACTION:DISPLAY",
-    `DESCRIPTION:${esc(a.title)} starts in 1 hour`,
+    `DESCRIPTION:${esc(t("{title} starts in 1 hour", { title: a.title }))}`,
     "END:VALARM",
     "END:VEVENT",
     "END:VCALENDAR",
@@ -52,7 +53,7 @@ export function googleCalendarUrl(a) {
     text: a.title,
     dates: `${utc(a.at)}/${utc(a.at + DURATION)}`,
     location: a.place,
-    details: `${a.desc ? `${a.desc}\n\n` : ""}Group chat on CIU Hangout: ${activityUrl(a.id)}`,
+    details: `${a.desc ? `${a.desc}\n\n` : ""}${t("Group chat on CIU Hangout:")} ${activityUrl(a.id)}`,
   });
   return `https://calendar.google.com/calendar/render?${q}`;
 }

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { colorOf } from "../lib/format";
+import { t } from "../lib/i18n";
 
 export function CiuMark({ size = 34 }) {
   return <img src="/ciu-logo.png" alt="Cyprus International University" className="shrink-0 object-contain" style={{ height: size }} />;
@@ -39,7 +40,7 @@ export function Sheet({ onClose, children, label, full }) {
         }`}
       >
         {onClose && (
-          <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 rounded-full text-xl z-10 bg-mist" aria-label="Close">
+          <button onClick={onClose} className="absolute top-4 right-4 w-9 h-9 rounded-full text-xl z-10 bg-mist" aria-label={t("Close")}>
             ×
           </button>
         )}

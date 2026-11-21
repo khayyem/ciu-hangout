@@ -1,4 +1,5 @@
 import { AVATAR_COLORS } from "./constants";
+import { locale, t as tr, tn } from "./i18n";
 
 const DAY = 86_400_000;
 
@@ -8,10 +9,11 @@ export function dayLabel(t) {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const diff = Math.floor((t - start.getTime()) / DAY);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  if (diff === -1) return "Yesterday";
-  return new Date(t).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+  if (diff === 0) return tr("Today");
+  if (diff === 1) return tr("Tomorrow");
+  if (diff === -1) return tr("Yesterday");
+  const s = new Date(t).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export const colorOf = (key = "?") => AVATAR_COLORS[[...key].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
@@ -19,11 +21,11 @@ export const colorOf = (key = "?") => AVATAR_COLORS[[...key].reduce((a, c) => a 
 export const firstName = (full = "") => full.trim().split(/\s+/)[0] || "";
 
 export function spotsText(a) {
-  if (!a.max) return { text: "Open to everyone", hot: false };
+  if (!a.max) return { text: tr("Open to everyone"), hot: false };
   const left = a.max - a.memberUids.length;
   const waiting = a.waitUids?.length || 0;
-  if (left <= 0) return { text: waiting ? `Full · ${waiting} waiting` : "Full", hot: false };
-  return { text: left === 1 ? "1 spot left" : `${left} spots left`, hot: left <= 2 };
+  if (left <= 0) return { text: waiting ? `${tr("Full")} · ${tn("{n} waiting", waiting)}` : tr("Full"), hot: false };
+  return { text: tn("{n} spots left", left), hot: left <= 2 };
 }
 
 export const isMember = (a, uid) => !!uid && a.memberUids.includes(uid);
@@ -42,8 +44,8 @@ export function timeBadge(at, now) {
   const diff = at - now;
   if (diff > 0 && diff <= 60 * 60_000) {
     const mins = Math.max(1, Math.round(diff / 60_000));
-    return { text: `Starts in ${mins} min`, tone: "soon" };
+    return { text: tr("Starts in {n} min", { n: mins }), tone: "soon" };
   }
-  if (diff <= 0 && diff > -2 * 3600_000) return { text: "Happening now", tone: "now" };
+  if (diff <= 0 && diff > -2 * 3600_000) return { text: tr("Happening now"), tone: "now" };
   return null;
 }

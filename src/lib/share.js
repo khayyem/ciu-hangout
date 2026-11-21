@@ -1,4 +1,5 @@
 import { dayLabel, hhmm } from "./format";
+import { t } from "./i18n";
 
 const KEY = "hangout-open-activity";
 
@@ -39,7 +40,7 @@ export const activityUrl = (id) => `${window.location.origin}/?a=${encodeURIComp
 // иначе копируем ссылку. Возвращает "shared" | "copied" | "cancelled".
 export async function shareActivity(a) {
   const url = activityUrl(a.id);
-  const text = `${a.title} · ${dayLabel(a.at)} at ${hhmm(a.at)} · ${a.place}. Join on CIU Hangout:`;
+  const text = `${a.title} · ${t("{day} at {time}", { day: dayLabel(a.at), time: hhmm(a.at) })} · ${a.place}. ${t("Join on CIU Hangout:")}`;
   if (navigator.share) {
     try {
       await navigator.share({ title: a.title, text, url });
@@ -52,10 +53,10 @@ export async function shareActivity(a) {
     await navigator.clipboard.writeText(`${text} ${url}`);
     return "copied";
   } catch {
-    window.prompt("Copy this link", url);
+    window.prompt(t("Copy this link"), url);
     return "copied";
   }
 }
 
 export const whatsappUrl = (a) =>
-  `https://wa.me/?text=${encodeURIComponent(`${a.title} · ${dayLabel(a.at)} at ${hhmm(a.at)} · ${a.place}. Join on CIU Hangout: ${activityUrl(a.id)}`)}`;
+  `https://wa.me/?text=${encodeURIComponent(`${a.title} · ${t("{day} at {time}", { day: dayLabel(a.at), time: hhmm(a.at) })} · ${a.place}. ${t("Join on CIU Hangout:")} ${activityUrl(a.id)}`)}`;

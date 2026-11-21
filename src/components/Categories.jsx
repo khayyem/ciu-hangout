@@ -1,3 +1,5 @@
+import { t } from "../lib/i18n";
+
 // Плитки категорий с иллюстрациями: у каждой свой мягкий фон из «цитрусовой» палитры,
 // рисунки — плоские SVG в тех же цветах (grove, tangerine, ink) с парой оттенков.
 
@@ -132,7 +134,7 @@ export function CategoryTiles({ cats, value, onChange }) {
             className={`relative h-[84px] rounded-2xl overflow-hidden text-left p-3 flex items-start transition ${on ? "ring-2 ring-ink" : ""} ${dim ? "opacity-55" : ""}`}
             style={{ background: bg }}
           >
-            <span className="relative z-10 font-bold text-[15px] leading-tight">{c}</span>
+            <span className="relative z-10 font-bold text-[15px] leading-tight">{t(c)}</span>
             <span className="absolute -right-1 -bottom-1.5 w-[58px] h-[58px] [&>svg]:w-full [&>svg]:h-full">
               <Art />
             </span>

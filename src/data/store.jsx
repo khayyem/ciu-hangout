@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { backend } from "./backend";
+import { t } from "../lib/i18n";
 
 const StoreCtx = createContext(null);
 
@@ -51,7 +52,7 @@ export function StoreProvider({ children }) {
     );
 
     const need = () => {
-      if (!uid) throw new Error("Please sign in first.");
+      if (!uid) throw new Error(t("Please sign in first."));
       return uid;
     };
     return {

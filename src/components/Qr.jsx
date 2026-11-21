@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Sheet } from "./ui";
+import { t } from "../lib/i18n";
 
 export function QrImage({ text, size = 240 }) {
   const [svg, setSvg] = useState("");
@@ -18,7 +19,7 @@ export function QrImage({ text, size = 240 }) {
       className="mx-auto bg-white [&>svg]:w-full [&>svg]:h-full"
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`QR code for ${text}`}
+      aria-label={`QR: ${text}`}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
@@ -27,7 +28,7 @@ export function QrImage({ text, size = 240 }) {
 // Большой QR для показа на экране или печати плаката (печатается только содержимое листа).
 export function QrSheet({ url, kicker, title, subtitle, onClose }) {
   return (
-    <Sheet onClose={onClose} label="QR code">
+    <Sheet onClose={onClose} label="QR">
       <div className="qr-print text-center pt-2">
         <div className="flex items-center justify-center gap-2">
           <img src="/ciu-logo.png" alt="" className="h-8" />
@@ -39,11 +40,11 @@ export function QrSheet({ url, kicker, title, subtitle, onClose }) {
         <div className="mt-5">
           <QrImage text={url} size={260} />
         </div>
-        <p className="mt-4 font-bold">Scan with your phone camera to join</p>
+        <p className="mt-4 font-bold">{t("Scan with your phone camera to join")}</p>
         <p className="mt-1 text-xs text-muted break-all">{url}</p>
       </div>
       <button onClick={() => window.print()} className="no-print mt-5 w-full font-bold py-3 rounded-full bg-mist">
-        Print poster
+        {t("Print poster")}
       </button>
     </Sheet>
   );

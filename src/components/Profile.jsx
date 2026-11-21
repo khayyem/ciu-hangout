@@ -5,6 +5,8 @@ import { Avatar, CiuMark, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
 import { STARTER_TITLES, starterActivities } from "../lib/starters";
 import { QrSheet } from "./Qr";
+import { LangSwitch } from "./LangSwitch";
+import { t, tn } from "../lib/i18n";
 
 export function SignIn({ onDemo }) {
   const { signIn } = useStore();
@@ -16,29 +18,32 @@ export function SignIn({ onDemo }) {
     try {
       await signIn();
     } catch (e) {
-      setErr(e.code === "auth/unauthorized-domain" ? "Sign-in isn't enabled for this web address yet." : e.message || "Couldn't sign in. Try again.");
+      setErr(e.code === "auth/unauthorized-domain" ? t("Sign-in isn't enabled for this web address yet.") : e.message || t("Couldn't sign in. Try again."));
     } finally {
       setBusy(false);
     }
   };
   return (
     <div className="min-h-dvh max-w-md mx-auto px-6 flex flex-col">
+      <div className="pt-[max(1rem,env(safe-area-inset-top))] flex justify-end">
+        <LangSwitch />
+      </div>
       <div className="flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-2.5">
           <CiuMark size={48} />
           <h1 className="text-4xl font-extrabold tracking-tight">hangout</h1>
         </div>
-        <p className="mt-6 text-2xl font-bold leading-snug">Football tonight, kebab tomorrow, a study group before finals.</p>
-        <p className="mt-3 text-muted">See what CIU students are doing. Join in or start something, and plan it together in a group chat.</p>
+        <p className="mt-6 text-2xl font-bold leading-snug">{t("Football tonight, kebab tomorrow, a study group before finals.")}</p>
+        <p className="mt-3 text-muted">{t("See what CIU students are doing. Join in or start something, and plan it together in a group chat.")}</p>
         <button onClick={go} disabled={busy} className={`mt-8 w-full font-bold py-3.5 rounded-full bg-tangerine text-ink ${busy ? "opacity-60" : ""}`}>
-          {busy ? "Signing in…" : "Continue with Google"}
+          {busy ? t("Signing in…") : t("Continue with Google")}
         </button>
         {err && <p className="mt-3 text-sm font-semibold text-danger">{err}</p>}
-        <p className="mt-3 text-sm text-center text-muted">For Cyprus International University students only.</p>
+        <p className="mt-3 text-sm text-center text-muted">{t("For Cyprus International University students only.")}</p>
       </div>
       {onDemo && (
         <button onClick={onDemo} className="py-6 text-sm font-semibold text-muted">
-          Just looking? Try the demo
+          {t("Just looking? Try the demo")}
         </button>
       )}
     </div>
@@ -58,12 +63,12 @@ export function PersonCard({ uid, onClose, onReport, flash }) {
         <Avatar name={p.short || p.name} photo={p.photoURL} colorKey={uid} size={64} ring={false} />
         <div className="min-w-0">
           <div className="text-xl font-extrabold break-words">{p.name}</div>
-          <div className="text-sm text-muted">{[p.dept, p.year].filter(Boolean).join(" · ") || "CIU student"}</div>
+          <div className="text-sm text-muted">{[p.dept, p.year].filter(Boolean).map((x) => t(x)).join(" · ") || t("CIU student")}</div>
         </div>
       </div>
       {p.bio && <p className="mt-4 leading-relaxed break-words">{p.bio}</p>}
       <p className="mt-4 text-sm text-muted">
-        Hosting {hosting} upcoming {hosting === 1 ? "activity" : "activities"}
+        {tn("Hosting {n} upcoming activities", hosting)}
       </p>
       {!isMe && (
         <div className="mt-5 flex gap-3">
@@ -72,26 +77,26 @@ export function PersonCard({ uid, onClose, onReport, flash }) {
               try {
                 if (isBlocked) {
                   await unblock(uid);
-                  flash?.(`${p.short} is unblocked`);
+                  flash?.(t("{name} is unblocked", { name: p.short }));
                 } else {
                   await block(uid);
-                  flash?.(`Blocked. You won't see ${p.short}'s activities or messages.`);
+                  flash?.(t("Blocked. You won't see {name}'s activities or messages.", { name: p.short }));
                   onClose();
                 }
               } catch (e) {
-                flash?.(e.message || "Something went wrong");
+                flash?.(e.message || t("Something went wrong"));
               }
             }}
             className={`flex-1 font-bold py-3 rounded-full bg-mist ${isBlocked ? "text-ink" : "text-danger"}`}
           >
-            {isBlocked ? "Unblock" : "Block"}
+            {isBlocked ? t("Unblock") : t("Block")}
           </button>
           <button onClick={() => onReport({ type: "user", targetId: uid, targetTitle: p.name })} className="flex-1 font-bold py-3 rounded-full bg-mist">
-            Report
+            {t("Report")}
           </button>
         </div>
       )}
-      {isBlocked && <p className="mt-2 text-sm text-center text-muted">You've blocked {p.short}. Their activities and messages are hidden.</p>}
+      {isBlocked && <p className="mt-2 text-sm text-center text-muted">{t("You've blocked {name}. Their activities and messages are hidden.", { name: p.short })}</p>}
     </Sheet>
   );
 }
@@ -103,32 +108,32 @@ function ReportItem({ r, onOpen, onDeleteActivity }) {
   return (
     <div className="py-3 border-b border-line">
       <div className="text-xs font-bold uppercase tracking-wide text-muted">
-        {r.type === "user" ? "Person" : "Activity"} · {dayLabel(r.createdAt)} {hhmm(r.createdAt)}
+        {r.type === "user" ? t("Person") : t("Activity")} · {dayLabel(r.createdAt)} {hhmm(r.createdAt)}
       </div>
       <div className="font-bold break-words">{r.targetTitle || r.targetId}</div>
       <div className="text-sm">
-        {r.reason}
+        {t(r.reason)}
         {r.details ? ` — ${r.details}` : ""}
       </div>
-      <div className="text-xs text-muted">Reported by {reporter.name}</div>
+      <div className="text-xs text-muted">{t("Reported by {name}", { name: reporter.name })}</div>
       <div className="mt-2 flex flex-wrap gap-2 text-sm font-bold">
         {r.type === "user" && (
           <button onClick={() => onOpen({ person: r.targetId })} className="px-3 py-1.5 rounded-full bg-mist">
-            View person
+            {t("View person")}
           </button>
         )}
         {act && (
           <>
             <button onClick={() => onOpen({ activity: act.id })} className="px-3 py-1.5 rounded-full bg-mist">
-              Open
+              {t("Open")}
             </button>
             <button onClick={() => onDeleteActivity(act)} className="px-3 py-1.5 rounded-full bg-mist text-danger">
-              Delete activity
+              {t("Delete activity")}
             </button>
           </>
         )}
         <button onClick={() => resolveReport(r.id)} className="px-3 py-1.5 rounded-full bg-mist">
-          Mark resolved
+          {t("Mark resolved")}
         </button>
       </div>
     </div>
@@ -146,7 +151,7 @@ function StarterControls({ flash }) {
       await fn();
       flash(done);
     } catch (e) {
-      flash(e.message || "Something went wrong");
+      flash(e.message || t("Something went wrong"));
     } finally {
       setBusy(false);
     }
@@ -155,21 +160,21 @@ function StarterControls({ flash }) {
     run(async () => {
       const have = new Set(mine.map((a) => a.title));
       for (const a of starterActivities()) if (!have.has(a.title)) await createActivity(a);
-    }, "Starter activities added to the feed");
-  const remove = () => run(async () => Promise.all(mine.map((a) => deleteActivity(a.id))), "Starter activities removed");
+    }, t("Starter activities added to the feed"));
+  const remove = () => run(async () => Promise.all(mine.map((a) => deleteActivity(a.id))), t("Starter activities removed"));
   return (
     <div className="mb-6 p-4 rounded-2xl border border-line">
-      <div className="font-bold">Starter activities</div>
+      <div className="font-bold">{t("Starter activities")}</div>
       <p className="mt-1 text-sm text-muted">
-        Adds {STARTER_TITLES.size} activities at campus places over the next days, hosted by you, so the feed isn't empty. Real people can join them.
+        {t("Adds {n} activities at campus places over the next days, hosted by you, so the feed isn't empty. Real people can join them.", { n: STARTER_TITLES.size })}
       </p>
       <div className="mt-3 flex gap-2 text-sm font-bold">
         <button onClick={add} disabled={busy || mine.length >= STARTER_TITLES.size} className={`px-4 py-2 rounded-full bg-ink text-white ${busy || mine.length >= STARTER_TITLES.size ? "opacity-50" : ""}`}>
-          {mine.length ? "Add missing" : "Add to feed"}
+          {mine.length ? t("Add missing") : t("Add to feed")}
         </button>
         {mine.length > 0 && (
           <button onClick={remove} disabled={busy} className={`px-4 py-2 rounded-full bg-mist text-danger ${busy ? "opacity-50" : ""}`}>
-            Remove ({mine.length})
+            {t("Remove")} ({mine.length})
           </button>
         )}
       </div>
@@ -183,15 +188,15 @@ function InviteQr() {
   return (
     <>
       <button onClick={() => setOpen(true)} className="mt-6 w-full text-left p-4 rounded-2xl border border-line">
-        <div className="font-bold">Invite friends</div>
-        <div className="text-sm text-muted">Show a QR code that opens CIU Hangout.</div>
+        <div className="font-bold">{t("Invite friends")}</div>
+        <div className="text-sm text-muted">{t("Show a QR code that opens CIU Hangout.")}</div>
       </button>
       {open && (
         <QrSheet
           url={`${window.location.origin}/`}
           kicker="Cyprus International University"
-          title="Find people to hang out with"
-          subtitle="Football tonight, kebab tomorrow, a study group before finals."
+          title={t("Find people to hang out with")}
+          subtitle={t("Football tonight, kebab tomorrow, a study group before finals.")}
           onClose={() => setOpen(false)}
         />
       )}
@@ -204,18 +209,18 @@ function BlockedList({ flash }) {
   if (!blocked.size) return null;
   return (
     <div className="mt-6">
-      <div className="font-bold">Blocked</div>
+      <div className="font-bold">{t("Blocked")}</div>
       {[...blocked].map((uid) => (
         <div key={uid} className="flex items-center justify-between gap-3 py-2 border-b border-line">
-          <span className="truncate">{people[uid]?.name || "CIU student"}</span>
+          <span className="truncate">{people[uid]?.name || t("CIU student")}</span>
           <button
             onClick={async () => {
               await unblock(uid);
-              flash("Unblocked");
+              flash(t("Unblocked"));
             }}
             className="text-sm font-bold px-3 py-1.5 rounded-full bg-mist"
           >
-            Unblock
+            {t("Unblock")}
           </button>
         </div>
       ))}
@@ -235,7 +240,7 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
         <div className="min-w-0">
           <div className="text-2xl font-extrabold leading-tight break-words">{me.name}</div>
           <div className="text-muted">
-            {me.dept} · {me.year}
+            {t(me.dept)} · {t(me.year)}
           </div>
         </div>
       </div>
@@ -243,9 +248,9 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
 
       <div className="mt-5 grid grid-cols-3 rounded-2xl overflow-hidden border border-line">
         {[
-          ["Student ID", me.sid || "—"],
-          ["Going", upcoming.length - hosting],
-          ["Hosting", hosting],
+          [t("Student ID"), me.sid || "—"],
+          [t("Going"), upcoming.length - hosting],
+          [t("Hosting"), hosting],
         ].map(([k, v], i) => (
           <div key={k} className={`p-3 min-w-0 ${i ? "border-l border-line" : ""}`}>
             <div className="text-xs text-muted">{k}</div>
@@ -253,11 +258,11 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
           </div>
         ))}
       </div>
-      <p className="text-xs mt-2 text-muted">Only you can see your student ID.</p>
+      <p className="text-xs mt-2 text-muted">{t("Only you can see your student ID.")}</p>
 
-      <div className="mt-6 font-bold">Your upcoming plans</div>
+      <div className="mt-6 font-bold">{t("Your upcoming plans")}</div>
       {upcoming.length === 0 ? (
-        <p className="mt-1 text-sm text-muted">Nothing yet. Join something or create your own.</p>
+        <p className="mt-1 text-sm text-muted">{t("Nothing yet. Join something or create your own.")}</p>
       ) : (
         upcoming.map((a) => (
           <button key={a.id} onClick={() => onOpen(a.id)} className="w-full text-left flex gap-3 py-3 border-b border-line">
@@ -266,7 +271,7 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
               <span className="font-semibold block truncate">{a.title}</span>
               <span className="text-sm text-muted">
                 {dayLabel(a.at)}
-                {a.hostUid === me.uid ? " · hosting" : ""}
+                {a.hostUid === me.uid ? ` · ${t("hosting")}` : ""}
               </span>
             </span>
           </button>
@@ -276,19 +281,24 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
       {isAdmin && (
         <div className="mt-8">
           <button onClick={onStats} className="w-full mb-5 font-bold py-3 rounded-full bg-grove text-white">
-            Open stats
+            {t("Open stats")}
           </button>
           <StarterControls flash={flash} />
           <div className="font-bold">
-            Reports to review{reports.length ? ` (${reports.length})` : ""}
+            {t("Reports to review")}{reports.length ? ` (${reports.length})` : ""}
           </div>
           {reports.length === 0 ? (
-            <p className="mt-1 text-sm text-muted">All clear.</p>
+            <p className="mt-1 text-sm text-muted">{t("All clear.")}</p>
           ) : (
             reports.map((r) => <ReportItem key={r.id} r={r} onOpen={onAdminOpen} onDeleteActivity={onDeleteActivity} />)
           )}
         </div>
       )}
+
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <span className="font-bold">{t("Language")}</span>
+        <LangSwitch />
+      </div>
 
       <InviteQr />
 
@@ -296,10 +306,10 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
 
       <div className="mt-6 flex gap-3">
         <button onClick={onEdit} className="flex-1 font-bold py-3 rounded-full bg-mist">
-          Edit profile
+          {t("Edit profile")}
         </button>
         <button onClick={onSignOut} className="flex-1 font-bold py-3 rounded-full bg-mist text-danger">
-          Sign out
+          {t("Sign out")}
         </button>
       </div>
     </div>

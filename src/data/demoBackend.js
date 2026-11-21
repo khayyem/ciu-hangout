@@ -1,4 +1,5 @@
 import { joinPatch, leavePatch, waitJoinPatch, waitLeavePatch } from "../lib/membership";
+import { t } from "../lib/i18n";
 
 // Демо-режим: те же функции, что у firebaseBackend, но всё в памяти браузера.
 // Включается через ?demo в адресе или VITE_DEMO=1. Удобно для показа без интернета/аккаунта.
@@ -77,7 +78,7 @@ let seq = 100;
 async function applyDemo(id, makePatch) {
   await tick();
   const a = state.acts.find((x) => x.id === id);
-  if (!a) throw new Error("This activity was removed.");
+  if (!a) throw new Error(t("This activity was removed."));
   const patch = makePatch(a);
   if (patch) {
     updateAct(id, (x) => ({ ...x, ...patch }));

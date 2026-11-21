@@ -48,6 +48,8 @@ npm run test:rules     # тесты правил Firestore (через firebase-
 - **Блокировка**: Block в карточке человека скрывает его активности и сообщения (`blocks/{uid}`).
 - **QR-коды**: у каждой активности (плакат для печати) и «Invite friends» в профиле.
 - **Календарь**: .ics с напоминанием за час и ссылка Google Calendar. Метки «Starts in N min» / «Happening now».
+- **Языки** EN / TR / RU: по языку телефона, переключатель на экране входа и в профиле.
+  `t("English text")` и `tn()` для множественного числа (`src/lib/i18n.js`), переводы — `src/lib/i18n-dict.js`.
 - **Стартовые активности** для модератора: Profile → Starter activities (`src/lib/starters.js`).
 
 ## Модерация

@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { HISTORY_MS } from "../lib/constants";
 import { joinPatch, leavePatch, waitJoinPatch, waitLeavePatch } from "../lib/membership";
+import { t } from "../lib/i18n";
 
 // Конфиг веб-клиента Firebase не секретный (он всё равно попадает в бандл),
 // но по договорённости берётся из env. Значения по умолчанию — текущий проект,
@@ -60,7 +61,7 @@ function applyTx(id, makePatch) {
   return runTransaction(db, async (tx) => {
     const ref = doc(db, "activities", id);
     const s = await tx.get(ref);
-    if (!s.exists()) throw new Error("This activity was removed.");
+    if (!s.exists()) throw new Error(t("This activity was removed."));
     const patch = makePatch(s.data());
     if (patch) tx.update(ref, patch);
   });

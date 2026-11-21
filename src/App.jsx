@@ -3,6 +3,7 @@ import { useStore } from "./data/store";
 import { CATS, FEED_GRACE_MS } from "./lib/constants";
 import { dayLabel, isMember, isWaiting } from "./lib/format";
 import { useNow } from "./lib/useNow";
+import { t, useLang } from "./lib/i18n";
 import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
 import { InstallBanner, OfflineBar } from "./components/Banners";
 import { StatsSheet } from "./components/Stats";
@@ -19,15 +20,16 @@ const goLive = () => (window.location.href = "/?live");
 function DemoBanner() {
   return (
     <div className="bg-mist text-grove text-sm font-semibold text-center py-2 px-4">
-      Demo mode · nothing is saved.{" "}
+      {t("Demo mode · nothing is saved.")}{" "}
       <button onClick={goLive} className="underline underline-offset-2">
-        Exit demo
+        {t("Exit demo")}
       </button>
     </div>
   );
 }
 
 export default function App() {
+  useLang(); // перерисовать всё приложение при смене языка
   const store = useStore();
   const { mode, user, me } = store;
 
@@ -73,6 +75,7 @@ function Main() {
   const [toast, setToast] = useState("");
   const toastTimer = useRef(null);
   const now = useNow();
+  const lang = useLang();
 
   const flash = useCallback((t) => {
     setToast(t);
@@ -86,15 +89,15 @@ function Main() {
       if (leaving) {
         await store.leave(a.id);
         if (chatId === a.id) setChatId(null);
-        flash(`You left "${a.title}"`);
+        flash(t('You left "{title}"', { title: a.title }));
       } else {
         await store.join(a.id);
         setOpenId(null);
         setChatId(a.id);
-        flash("You're in. Say hi to the group.");
+        flash(t("You're in. Say hi to the group."));
       }
     } catch (e) {
-      flash(e.message || "Something went wrong");
+      flash(e.message || t("Something went wrong"));
     }
   };
 
@@ -102,24 +105,24 @@ function Main() {
     try {
       if (isWaiting(a, me.uid)) {
         await store.leaveWaitlist(a.id);
-        flash("You left the waitlist");
+        flash(t("You left the waitlist"));
       } else {
         await store.joinWaitlist(a.id);
-        flash(`You're on the waitlist (#${(a.waitUids?.length || 0) + 1}). We'll add you if a spot opens.`);
+        flash(t("You're on the waitlist (#{n}). We'll add you if a spot opens.", { n: (a.waitUids?.length || 0) + 1 }));
       }
     } catch (e) {
-      flash(e.message || "Something went wrong");
+      flash(e.message || t("Something went wrong"));
     }
   };
 
   const submitActivity = async (data) => {
     if (form?.activity) {
       await store.updateActivity(form.activity.id, data);
-      flash("Changes saved");
+      flash(t("Changes saved"));
     } else {
       await store.createActivity(data);
       setCat("All");
-      flash("Published. People can join now.");
+      flash(t("Published. People can join now."));
     }
     setForm(null);
   };
@@ -130,9 +133,9 @@ function Main() {
       setConfirmDelete(null);
       setOpenId(null);
       setChatId(null);
-      flash("Activity deleted");
+      flash(t("Activity deleted"));
     } catch (e) {
-      flash(e.message || "Couldn't delete");
+      flash(e.message || t("Couldn't delete"));
     }
   };
 
@@ -153,7 +156,7 @@ function Main() {
     });
     return g;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [acts, cat, now, store.blocked]);
+  }, [acts, cat, now, store.blocked, lang]);
 
   const open = acts.find((a) => a.id === openId);
   const chat = acts.find((a) => a.id === chatId && isMember(a, me.uid));
@@ -172,39 +175,39 @@ function Main() {
           </div>
           {tab === "explore" && (
             <button onClick={() => setForm({})} className="font-bold px-4 py-2.5 rounded-full shrink-0 bg-tangerine text-ink">
-              Create
+              {t("Create")}
             </button>
           )}
         </div>
         {tab === "explore" && (
           <>
-            <p className="mt-2 text-muted">What CIU students are doing. Join in or start something.</p>
+            <p className="mt-2 text-muted">{t("What CIU students are doing. Join in or start something.")}</p>
             <InstallBanner />
             <div className="mt-4">
               <CategoryTiles cats={CATS} value={cat} onChange={setCat} />
             </div>
             {cat !== "All" && (
               <div className="mt-3 text-sm">
-                <span className="text-muted">Showing {cat} only · </span>
+                <span className="text-muted">{t("Showing {cat} only", { cat: t(cat) })} · </span>
                 <button onClick={() => setCat("All")} className="font-bold underline underline-offset-4">
-                  Show all
+                  {t("Show all")}
                 </button>
               </div>
             )}
           </>
         )}
-        {tab === "chats" && <h2 className="mt-5 text-xl font-extrabold">Group chats</h2>}
+        {tab === "chats" && <h2 className="mt-5 text-xl font-extrabold">{t("Group chats")}</h2>}
       </header>
 
       <main className="max-w-3xl mx-auto px-4 md:px-6">
         {tab === "explore" &&
           (!actsReady ? (
-            <p className="py-16 text-center text-muted">Loading…</p>
+            <p className="py-16 text-center text-muted">{t("Loading…")}</p>
           ) : groups.length === 0 ? (
             <EmptyState
-              title="Nothing planned here yet."
-              text="Start the first one, people usually join within the hour."
-              action="Create an activity"
+              title={t("Nothing planned here yet.")}
+              text={t("Start the first one, people usually join within the hour.")}
+              action={t("Create an activity")}
               onAction={() => setForm({})}
             />
           ) : (
@@ -236,19 +239,19 @@ function Main() {
       <nav className="fixed bottom-0 inset-x-0 border-t border-line z-40 bg-white pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-3xl mx-auto grid grid-cols-3">
           {[
-            ["explore", "Activities"],
+            ["explore", t("Activities")],
             [
               "chats",
               <span key="c" className="inline-flex items-center gap-1.5">
-                {unreadCount ? "Chats" : `Chats${chatCount ? ` (${chatCount})` : ""}`}
+                {unreadCount ? t("Chats") : `${t("Chats")}${chatCount ? ` (${chatCount})` : ""}`}
                 {unreadCount > 0 && (
-                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-tangerine text-ink text-xs leading-5 tabular" aria-label={`${unreadCount} unread`}>
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-tangerine text-ink text-xs leading-5 tabular" aria-label={t("{n} unread", { n: unreadCount })}>
                     {unreadCount}
                   </span>
                 )}
               </span>,
             ],
-            ["profile", "Profile"],
+            ["profile", t("Profile")],
           ].map(([id, label]) => (
             <button
               key={id}
@@ -285,11 +288,11 @@ function Main() {
         />
       )}
       {openId && actsReady && !open && (
-        <Sheet onClose={() => setOpenId(null)} label="Not available">
-          <h2 className="text-2xl font-extrabold pr-10">This activity isn't available</h2>
-          <p className="mt-2 text-muted">It may have ended or been removed by the host.</p>
+        <Sheet onClose={() => setOpenId(null)} label={t("This activity isn't available")}>
+          <h2 className="text-2xl font-extrabold pr-10">{t("This activity isn't available")}</h2>
+          <p className="mt-2 text-muted">{t("It may have ended or been removed by the host.")}</p>
           <button onClick={() => setOpenId(null)} className="mt-5 w-full font-bold py-3 rounded-full bg-ink text-white">
-            See what's on
+            {t("See what's on")}
           </button>
         </Sheet>
       )}
@@ -304,7 +307,7 @@ function Main() {
           onSave={async (p, sid) => {
             await store.saveProfile(p, sid);
             setEditingProfile(false);
-            flash("Profile saved");
+            flash(t("Profile saved"));
           }}
         />
       )}
@@ -317,15 +320,15 @@ function Main() {
             setReportTarget(null);
             if (r.type === "activity") setOpenId(null);
             else setPersonUid(null);
-            flash("Thanks. We'll take a look.");
+            flash(t("Thanks. We'll take a look."));
           }}
         />
       )}
       {confirmDelete && (
         <ConfirmSheet
-          title="Delete this activity?"
-          text={`"${confirmDelete.title}" and its group chat will be removed for everyone.`}
-          action="Delete"
+          title={t("Delete this activity?")}
+          text={t('"{title}" and its group chat will be removed for everyone.', { title: confirmDelete.title })}
+          action={t("Delete")}
           onClose={() => setConfirmDelete(null)}
           onConfirm={() => deleteActivity(confirmDelete)}
         />
