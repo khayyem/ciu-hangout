@@ -8,6 +8,7 @@ import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
 import { InstallBanner, OfflineBar } from "./components/Banners";
 import { StatsSheet } from "./components/Stats";
 import { CategoryTiles } from "./components/Categories";
+import { LangPicker } from "./components/LangSwitch";
 import { clearPendingActivity, pendingActivityId } from "./lib/share";
 import { ActivityDetail, ActivityRow } from "./components/Activity";
 import { ChatScreen, ChatsTab } from "./components/Chat";
@@ -181,7 +182,10 @@ function Main() {
         </div>
         {tab === "explore" && (
           <>
-            <p className="mt-2 text-muted">{t("What CIU students are doing. Join in or start something.")}</p>
+            <div className="mt-2 flex items-start justify-between gap-3">
+              <p className="text-muted">{t("What CIU students are doing. Join in or start something.")}</p>
+              <LangPicker />
+            </div>
             <InstallBanner />
             <div className="mt-4">
               <CategoryTiles cats={CATS} value={cat} onChange={setCat} />
