@@ -32,7 +32,6 @@ export function StoreProvider({ children }) {
   const dataKey = complete(profile) ? uid : null;
   const acts = useKeyed(dataKey, (cb, err) => backend.onActivities(cb, err));
   const people = useKeyed(dataKey, (cb, err) => backend.onUsers(cb, err));
-  const places = useKeyed(dataKey, (cb, err) => backend.onPlaces(cb, err));
   const blockList = useKeyed(dataKey, (cb, err) => backend.onBlocks(uid, cb, err));
   const reads = useKeyed(dataKey, (cb, err) => backend.onReads(uid, cb, err));
   const reports = useKeyed(user?.isAdmin && dataKey ? uid : null, (cb, err) => backend.onReports(cb, err));
@@ -65,9 +64,6 @@ export function StoreProvider({ children }) {
       people: people || {},
       reports: reports || [],
       unread,
-      places: places || {},
-      savePlace: (name, lat, lng) => backend.savePlace(name, lat, lng),
-      clearPlace: (name) => backend.clearPlace(name),
       blocked,
       block: (other) => backend.setBlocks(need(), [...new Set([...(blockList || []), other])]),
       unblock: (other) => backend.setBlocks(need(), (blockList || []).filter((u) => u !== other)),
@@ -87,7 +83,7 @@ export function StoreProvider({ children }) {
       report: (r) => backend.report(need(), r),
       resolveReport: (id) => backend.resolveReport(id),
     };
-  }, [user, uid, profile, priv, acts, people, reports, reads, blockList, places]);
+  }, [user, uid, profile, priv, acts, people, reports, reads, blockList]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }

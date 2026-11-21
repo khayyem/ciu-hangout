@@ -229,14 +229,3 @@ test("blocks: private to the owner", async () => {
   await assertFails(setDoc(doc(db("alice"), "blocks/alice"), { uids: "eve" }));
 });
 
-// ---- места на карте ----
-test("places: everyone with a profile reads, only admins set coordinates", async () => {
-  await withProfiles("alice", "mod");
-  const p = { name: "CIU Library", lat: 35.2, lng: 33.3, updatedAt: serverTimestamp() };
-  await assertFails(setDoc(doc(db("alice"), "places/ciu-library"), p));
-  await assertSucceeds(setDoc(doc(db("mod", { admin: true }), "places/ciu-library"), p));
-  await assertFails(setDoc(doc(db("mod", { admin: true }), "places/bad"), { ...p, lat: 200 }));
-  await assertFails(setDoc(doc(db("mod", { admin: true }), "places/bad"), { ...p, lat: "35" }));
-  await assertSucceeds(getDoc(doc(db("alice"), "places/ciu-library")));
-  await assertFails(getDoc(doc(db("nobody"), "places/ciu-library")));
-});

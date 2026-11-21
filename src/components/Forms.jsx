@@ -126,7 +126,7 @@ export function ProfileForm({ initial, firstTime, onClose, onSave, onSignOut }) 
   );
 }
 
-export function ActivityForm({ initial, presetPlace, onClose, onSubmit }) {
+export function ActivityForm({ initial, onClose, onSubmit }) {
   const today = toDateInput(useNow());
   const editing = !!initial;
   const [f, , set] = useForm(
@@ -141,7 +141,7 @@ export function ActivityForm({ initial, presetPlace, onClose, onSubmit }) {
           max: String(initial.max || 0),
           desc: initial.desc,
         }
-      : { title: "", cat: "Chill", date: today, time: "19:00", spot: presetPlace || "", place: "", max: "6", desc: "" },
+      : { title: "", cat: "Chill", date: today, time: "19:00", spot: "", place: "", max: "6", desc: "" },
   );
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);

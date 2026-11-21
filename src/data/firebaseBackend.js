@@ -8,7 +8,6 @@ import {
 } from "firebase/firestore";
 import { HISTORY_MS } from "../lib/constants";
 import { joinPatch, leavePatch, waitJoinPatch, waitLeavePatch } from "../lib/membership";
-import { placeSlug } from "../lib/places";
 
 // Конфиг веб-клиента Firebase не секретный (он всё равно попадает в бандл),
 // но по договорённости берётся из env. Значения по умолчанию — текущий проект,
@@ -173,20 +172,6 @@ export const firebaseBackend = {
   leave: (id, uid) => applyTx(id, (a) => leavePatch(a, uid)),
   joinWaitlist: (id, uid) => applyTx(id, (a) => waitJoinPatch(a, uid)),
   leaveWaitlist: (id, uid) => applyTx(id, (a) => waitLeavePatch(a, uid)),
-
-  // Координаты мест кампуса: { [name]: { lat, lng } }
-  onPlaces(cb, onError) {
-    return onSnapshot(collection(db, "places"), (snap) => {
-      const map = {};
-      snap.forEach((d) => {
-        const x = d.data();
-        map[x.name] = { lat: x.lat, lng: x.lng };
-      });
-      cb(map);
-    }, fail(onError));
-  },
-  savePlace: (name, lat, lng) => setDoc(doc(db, "places", placeSlug(name)), { name, lat, lng, updatedAt: serverTimestamp() }),
-  clearPlace: (name) => deleteDoc(doc(db, "places", placeSlug(name))),
 
   // Кого пользователь заблокировал (видит только он).
   onBlocks(uid, cb, onError) {

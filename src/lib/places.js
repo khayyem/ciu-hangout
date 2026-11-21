@@ -35,17 +35,8 @@ export const CAMPUS_PLACES = [
 const ALL = new Set(CAMPUS_PLACES.flatMap((g) => g.places));
 export const isCampusPlace = (p) => ALL.has(p);
 
-// Id документа места в Firestore (places/{slug}).
-export const placeSlug = (name) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 100);
-
-// Ссылка в Google Maps: по точным координатам, если модератор их поставил, иначе поиском.
-export function mapUrl(place, coords) {
-  if (coords) return `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+// Ссылка на поиск в картах: для мест кампуса добавляем название университета.
+export function mapUrl(place) {
   const q = isCampusPlace(place) ? `${place.replace(" · ", " ")}, Cyprus International University, Nicosia` : `${place}, North Cyprus`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }

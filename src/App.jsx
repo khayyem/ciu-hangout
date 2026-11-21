@@ -6,7 +6,6 @@ import { useNow } from "./lib/useNow";
 import { CiuMark, EmptyState, Sheet, Splash } from "./components/ui";
 import { InstallBanner, OfflineBar } from "./components/Banners";
 import { StatsSheet } from "./components/Stats";
-import { MapTab } from "./components/MapTab";
 import { clearPendingActivity, pendingActivityId } from "./lib/share";
 import { ActivityDetail, ActivityRow } from "./components/Activity";
 import { ChatScreen, ChatsTab } from "./components/Chat";
@@ -196,7 +195,6 @@ function Main() {
           </>
         )}
         {tab === "chats" && <h2 className="mt-5 text-xl font-extrabold">Group chats</h2>}
-        {tab === "map" && <h2 className="mt-5 text-xl font-extrabold">Campus map</h2>}
       </header>
 
       <main className="max-w-3xl mx-auto px-4 md:px-6">
@@ -220,7 +218,6 @@ function Main() {
               </section>
             ))
           ))}
-        {tab === "map" && <MapTab onOpen={setOpenId} onCreateAt={(place) => setForm({ place })} flash={flash} />}
         {tab === "chats" && <ChatsTab onChat={setChatId} goExplore={() => setTab("explore")} />}
         {tab === "profile" && (
           <ProfileTab
@@ -238,10 +235,9 @@ function Main() {
       </main>
 
       <nav className="fixed bottom-0 inset-x-0 border-t border-line z-40 bg-white pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-3xl mx-auto grid grid-cols-4">
+        <div className="max-w-3xl mx-auto grid grid-cols-3">
           {[
             ["explore", "Activities"],
-            ["map", "Map"],
             [
               "chats",
               <span key="c" className="inline-flex items-center gap-1.5">
@@ -301,7 +297,7 @@ function Main() {
       {statsOpen && <StatsSheet onClose={() => setStatsOpen(false)} />}
       {chat && <ChatScreen a={chat} onClose={() => setChatId(null)} onPerson={setPersonUid} flash={flash} />}
       {personUid && <PersonCard uid={personUid} onClose={() => setPersonUid(null)} onReport={setReportTarget} flash={flash} />}
-      {form && <ActivityForm initial={form.activity} presetPlace={form.place} onClose={() => setForm(null)} onSubmit={submitActivity} />}
+      {form && <ActivityForm initial={form.activity} onClose={() => setForm(null)} onSubmit={submitActivity} />}
       {editingProfile && (
         <ProfileForm
           initial={me}

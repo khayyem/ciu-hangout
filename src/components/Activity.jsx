@@ -130,7 +130,7 @@ function LastMessage({ a }) {
 }
 
 export function ActivityDetail({ a, onClose, onToggle, onWait, onChat, onPerson, onEdit, onDelete, onReport, flash }) {
-  const { me, isAdmin, places } = useStore();
+  const { me, isAdmin } = useStore();
   const inIt = isMember(a, me?.uid);
   const isHost = a.hostUid === me?.uid;
   const badge = timeBadge(a.at, useNow());
@@ -161,7 +161,7 @@ export function ActivityDetail({ a, onClose, onToggle, onWait, onChat, onPerson,
         <a href={whatsappUrl(a)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
           WhatsApp
         </a>
-        <a href={mapUrl(a.place, places[a.place])} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
+        <a href={mapUrl(a.place)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
           Map
         </a>
         <button onClick={() => setCalOpen((v) => !v)} className={`px-4 py-2 rounded-full ${calOpen ? "bg-ink text-white" : "bg-mist"}`} aria-expanded={calOpen}>

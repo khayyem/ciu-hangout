@@ -56,7 +56,6 @@ const state = {
   reports: [],
   reads: {},
   blocks: {},
-  places: {},
 };
 state.acts.forEach((a) => {
   const last = state.msgs[a.id]?.at(-1);
@@ -144,18 +143,6 @@ export const demoBackend = {
   leave: (id, uid) => applyDemo(id, (a) => leavePatch(a, uid)),
   joinWaitlist: (id, uid) => applyDemo(id, (a) => waitJoinPatch(a, uid)),
   leaveWaitlist: (id, uid) => applyDemo(id, (a) => waitLeavePatch(a, uid)),
-
-  onPlaces: (cb) => watch(() => cb(state.places)),
-  async savePlace(name, lat, lng) {
-    state.places = { ...state.places, [name]: { lat, lng } };
-    emit();
-  },
-  async clearPlace(name) {
-    const rest = { ...state.places };
-    delete rest[name];
-    state.places = rest;
-    emit();
-  },
 
   onBlocks: (uid, cb) => watch(() => cb(state.blocks[uid] || [])),
   async setBlocks(uid, uids) {

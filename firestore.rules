@@ -180,19 +180,6 @@ service cloud.firestore {
       allow delete: if signedIn() && me() == uid;
     }
 
-    // ---------- Места на карте ----------
-    // Координаты мест кампуса ставит модератор; видят все студенты с профилем.
-    match /places/{placeId} {
-      allow read: if hasProfile();
-      allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly(['name', 'lat', 'lng', 'updatedAt'])
-        && str(request.resource.data.name, 1, 120)
-        && request.resource.data.lat is number && request.resource.data.lat >= -90 && request.resource.data.lat <= 90
-        && request.resource.data.lng is number && request.resource.data.lng >= -180 && request.resource.data.lng <= 180
-        && request.resource.data.updatedAt == request.time;
-      allow delete: if isAdmin();
-    }
-
     // ---------- Блокировки ----------
     // blocks/{uid}.uids — кого пользователь скрыл. Видит и меняет только он сам.
     match /blocks/{uid} {
