@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 // Уменьшает фото до квадрата size×size и возвращает JPEG data URL (~15–30 КБ).
 // Хранится прямо в профиле, чтобы не нужен был Storage/Blaze-план.
 export function resizeImage(file, size = 256, quality = 0.82) {
@@ -14,7 +16,7 @@ export function resizeImage(file, size = 256, quality = 0.82) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Couldn't read that image."));
+      reject(new Error(t("Couldn't read that image.")));
     };
     img.src = url;
   });

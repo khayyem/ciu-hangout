@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useStore, useMessages, usePerson } from "../data/store";
 import { dayLabel, hhmm, isMember } from "../lib/format";
 import { Avatar, EmptyState, Sheet } from "./ui";
+import { t, tn } from "../lib/i18n";
 
 function Bubble({ m, mine, onPerson }) {
   const p = usePerson(m.uid);
@@ -44,28 +45,28 @@ export function ChatScreen({ a, onClose, onPerson, flash }) {
       await sendMessage(a.id, text);
     } catch (e) {
       setMsg(text);
-      flash(e.message || "Message not sent");
+      flash(e.message || t("Message not sent"));
     }
   };
 
   return (
-    <Sheet onClose={onClose} label={`${a.title} chat`} full>
+    <Sheet onClose={onClose} label={a.title} full>
       <div className="p-5 pr-14 border-b border-line">
         <div className="font-extrabold text-lg leading-tight break-words">{a.title}</div>
         <div className="text-sm text-muted">
-          {dayLabel(a.at)} at {hhmm(a.at)} · {a.memberUids.length} {a.memberUids.length === 1 ? "person" : "people"}
+          {t("{day} at {time}", { day: dayLabel(a.at), time: hhmm(a.at) })} · {tn("{n} people", a.memberUids.length)}
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-5 space-y-3 min-h-[260px]">
-        <p className="text-xs text-center text-muted">Chat for everyone going. Agree on where and when to meet.</p>
-        {msgs === undefined && <p className="text-sm text-center text-muted">Loading…</p>}
+        <p className="text-xs text-center text-muted">{t("Chat for everyone going. Agree on where and when to meet.")}</p>
+        {msgs === undefined && <p className="text-sm text-center text-muted">{t("Loading…")}</p>}
         {msgs
           ?.filter((m) => !blocked.has(m.uid))
           .map((m) => (
             <Bubble key={m.id} m={m} mine={m.uid === me.uid} onPerson={onPerson} />
           ))}
         {msgs?.some((m) => blocked.has(m.uid)) && (
-          <p className="text-xs text-center text-muted">Messages from people you blocked are hidden.</p>
+          <p className="text-xs text-center text-muted">{t("Messages from people you blocked are hidden.")}</p>
         )}
         <div ref={end} />
       </div>
@@ -80,13 +81,13 @@ export function ChatScreen({ a, onClose, onPerson, flash }) {
           value={msg}
           onChange={(e) => setMsg(e.target.value)}
           maxLength={1000}
-          placeholder="Message the group"
+          placeholder={t("Message the group")}
           className="flex-1 min-w-0 px-4 py-2.5 rounded-full border border-line text-base"
-          aria-label="Message"
+          aria-label={t("Message")}
           enterKeyHint="send"
         />
         <button type="submit" className="px-4 rounded-full font-bold bg-ink text-white">
-          Send
+          {t("Send")}
         </button>
       </form>
     </Sheet>
@@ -111,9 +112,9 @@ function ChatRow({ a, onChat }) {
           {last && <span className={`text-xs shrink-0 ${isNew ? "text-tangerine font-bold" : "text-muted"}`}>{hhmm(last.at)}</span>}
         </div>
         <div className={`text-sm truncate flex items-center gap-2 ${isNew ? "text-ink font-semibold" : "text-muted"}`}>
-          {isNew && <span className="w-2.5 h-2.5 rounded-full bg-tangerine shrink-0" aria-label="New messages" />}
+          {isNew && <span className="w-2.5 h-2.5 rounded-full bg-tangerine shrink-0" aria-label={t("New messages")} />}
           <span className="truncate">
-          {last ? (blocked.has(last.uid) ? "Message hidden" : `${last.uid === me.uid ? "You" : who.short}: ${last.text}`) : `${a.memberUids.length} ${a.memberUids.length === 1 ? "person" : "people"} · no messages yet`}</span>
+          {last ? (blocked.has(last.uid) ? t("Message hidden") : `${last.uid === me.uid ? t("You") : who.short}: ${last.text}`) : `${tn("{n} people", a.memberUids.length)} · ${t("no messages yet")}`}</span>
         </div>
       </div>
     </button>
@@ -126,9 +127,9 @@ export function ChatsTab({ onChat, goExplore }) {
   if (!list.length)
     return (
       <EmptyState
-        title="No group chats yet."
-        text="Join an activity and you'll chat with everyone going."
-        action="Find activities"
+        title={t("No group chats yet.")}
+        text={t("Join an activity and you'll chat with everyone going.")}
+        action={t("Find activities")}
         onAction={goExplore}
       />
     );

@@ -228,3 +228,4 @@ test("blocks: private to the owner", async () => {
   await assertFails(setDoc(doc(db("eve"), "blocks/alice"), { uids: [] }));
   await assertFails(setDoc(doc(db("alice"), "blocks/alice"), { uids: "eve" }));
 });
+

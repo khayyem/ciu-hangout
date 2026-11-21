@@ -3,6 +3,7 @@ import { useStore } from "../data/store";
 import { CATS } from "../lib/constants";
 import { useNow } from "../lib/useNow";
 import { Sheet } from "./ui";
+import { t, tn } from "../lib/i18n";
 
 const WEEK = 7 * 86_400_000;
 
@@ -23,13 +24,13 @@ function Bars({ title, rows }) {
     <section className="mt-6">
       <h3 className="font-bold">{title}</h3>
       {rows.length === 0 ? (
-        <p className="mt-1 text-sm text-muted">No data yet.</p>
+        <p className="mt-1 text-sm text-muted">{t("No data yet.")}</p>
       ) : (
         <ul className="mt-2 space-y-2">
           {rows.map((r) => (
-            <li key={r.label} className="text-sm" title={`${r.label}: ${r.value}`}>
+            <li key={r.label} className="text-sm" title={`${t(r.label)}: ${r.value}`}>
               <div className="flex justify-between gap-3">
-                <span className="truncate">{r.label}</span>
+                <span className="truncate">{t(r.label)}</span>
                 <span className="font-bold tabular shrink-0">{r.value}</span>
               </div>
               <div className="mt-1 h-2 rounded-full bg-mist overflow-hidden">
@@ -78,18 +79,18 @@ export function StatsSheet({ onClose }) {
   const catRows = CATS.map((c) => cats.find((r) => r.label === c) || { label: c, value: 0 }).sort((a, b) => b.value - a.value);
 
   return (
-    <Sheet onClose={onClose} label="Stats">
-      <h2 className="text-2xl font-extrabold pr-10">Stats</h2>
-      <p className="mt-1 text-sm text-muted">Last 7 days and upcoming. Visible to moderators only.</p>
+    <Sheet onClose={onClose} label={t("Stats")}>
+      <h2 className="text-2xl font-extrabold pr-10">{t("Stats")}</h2>
+      <p className="mt-1 text-sm text-muted">{t("Last 7 days and upcoming. Visible to moderators only.")}</p>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <Tile label="Students" value={students.length} note="with a profile" />
-        <Tile label="New activities" value={recent.length} note="created this week" />
-        <Tile label="Joins" value={joins} note={`${upcoming.length} upcoming activities`} />
-        <Tile label="Messages" value={messages ?? "…"} note="in all group chats" />
+        <Tile label={t("Students")} value={students.length} note={t("with a profile")} />
+        <Tile label={t("New activities")} value={recent.length} note={t("created this week")} />
+        <Tile label={t("Joins")} value={joins} note={tn("{n} upcoming activities", upcoming.length)} />
+        <Tile label={t("Messages")} value={messages ?? "…"} note={t("in all group chats")} />
       </div>
-      <Bars title="Activities by category" rows={catRows} />
-      <Bars title="Students by department" rows={countBy(students, (p) => p.dept).slice(0, 8)} />
-      <Bars title="Students by year" rows={countBy(students, (p) => p.year)} />
+      <Bars title={t("Activities by category")} rows={catRows} />
+      <Bars title={t("Students by department")} rows={countBy(students, (p) => p.dept).slice(0, 8)} />
+      <Bars title={t("Students by year")} rows={countBy(students, (p) => p.year)} />
     </Sheet>
   );
 }
