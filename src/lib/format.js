@@ -36,3 +36,14 @@ export const toDateInput = (t) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 export const toTimeInput = (t) => hhmm(t);
+
+// Живые метки времени для ленты: «Starts in 25 min» за час до начала, «Happening now» 2 часа после.
+export function timeBadge(at, now) {
+  const diff = at - now;
+  if (diff > 0 && diff <= 60 * 60_000) {
+    const mins = Math.max(1, Math.round(diff / 60_000));
+    return { text: `Starts in ${mins} min`, tone: "soon" };
+  }
+  if (diff <= 0 && diff > -2 * 3600_000) return { text: "Happening now", tone: "now" };
+  return null;
+}

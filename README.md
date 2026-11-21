@@ -46,6 +46,10 @@ npm run test:rules     # тесты правил Firestore (через firebase-
 - **Лист ожидания**: если мест нет — Waitlist; когда кто-то выходит, место получает первый в очереди
   (`waitUids`, переходы в `src/lib/membership.js`, проверка в правилах).
 - **Блокировка**: Block в карточке человека скрывает его активности и сообщения (`blocks/{uid}`).
+- **Карта кампуса** (вкладка Map, Leaflet + OpenStreetMap): точки мест ставит модератор
+  (тапом или «Use my location»), они хранятся в `places/{slug}`; активности показываются на своих местах.
+- **QR-коды**: у каждой активности (плакат для печати) и «Invite friends» в профиле.
+- **Календарь**: .ics с напоминанием за час и ссылка Google Calendar. Метки «Starts in N min» / «Happening now».
 - **Стартовые активности** для модератора: Profile → Starter activities (`src/lib/starters.js`).
 
 ## Модерация

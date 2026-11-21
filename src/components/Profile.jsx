@@ -4,6 +4,7 @@ import { dayLabel, hhmm, isMember } from "../lib/format";
 import { Avatar, CiuMark, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
 import { STARTER_TITLES, starterActivities } from "../lib/starters";
+import { QrSheet } from "./Qr";
 
 export function SignIn({ onDemo }) {
   const { signIn } = useStore();
@@ -176,6 +177,28 @@ function StarterControls({ flash }) {
   );
 }
 
+// QR всего приложения: показать на встрече или другу, чтобы сразу открыл Hangout.
+function InviteQr() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className="mt-6 w-full text-left p-4 rounded-2xl border border-line">
+        <div className="font-bold">Invite friends</div>
+        <div className="text-sm text-muted">Show a QR code that opens CIU Hangout.</div>
+      </button>
+      {open && (
+        <QrSheet
+          url={`${window.location.origin}/`}
+          kicker="Cyprus International University"
+          title="Find people to hang out with"
+          subtitle="Football tonight, kebab tomorrow, a study group before finals."
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 function BlockedList({ flash }) {
   const { blocked, unblock, people } = useStore();
   if (!blocked.size) return null;
@@ -266,6 +289,8 @@ export function ProfileTab({ onEdit, onSignOut, onOpen, onAdminOpen, onDeleteAct
           )}
         </div>
       )}
+
+      <InviteQr />
 
       <BlockedList flash={flash} />
 

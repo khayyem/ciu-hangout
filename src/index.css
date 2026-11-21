@@ -26,3 +26,22 @@ button {
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Печать QR-плаката: только содержимое листа с QR, без интерфейса вокруг. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .qr-print,
+  .qr-print * {
+    visibility: visible;
+  }
+  .qr-print {
+    position: fixed;
+    inset: 0;
+    padding: 48px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

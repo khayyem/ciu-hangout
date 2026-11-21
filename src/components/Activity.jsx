@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useStore, useMessages, usePerson } from "../data/store";
-import { dayLabel, hhmm, spotsText, isMember, isFull, isWaiting } from "../lib/format";
+import { dayLabel, hhmm, spotsText, isMember, isFull, isWaiting, timeBadge } from "../lib/format";
+import { downloadIcs, googleCalendarUrl } from "../lib/calendar";
+import { activityUrl } from "../lib/share";
+import { QrSheet } from "./Qr";
 import { Avatar, Sheet } from "./ui";
 import { useNow } from "../lib/useNow";
 import { mapUrl } from "../lib/places";
@@ -59,6 +62,17 @@ function MemberAvatar({ uid, size, ring, offset }) {
   );
 }
 
+export function TimeBadge({ a }) {
+  const b = timeBadge(a.at, useNow());
+  if (!b) return null;
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${b.tone === "now" ? "text-grove" : "text-tangerine"}`}>
+      <span className={`w-2 h-2 rounded-full ${b.tone === "now" ? "bg-grove" : "bg-tangerine"}`} />
+      {b.text}
+    </span>
+  );
+}
+
 export function ActivityRow({ a, onOpen, onToggle, onWait }) {
   const s = spotsText(a);
   return (
@@ -71,6 +85,7 @@ export function ActivityRow({ a, onOpen, onToggle, onWait }) {
     >
       <div className="w-[4.25rem] sm:w-20 shrink-0 text-2xl sm:text-3xl font-extrabold leading-none tabular">{hhmm(a.at)}</div>
       <div className="flex-1 min-w-0">
+        <TimeBadge a={a} />
         <div className="font-bold text-lg leading-snug break-words">{a.title}</div>
         <div className="text-sm mt-0.5 text-muted break-words">
           {a.cat} · {a.place}
@@ -115,16 +130,18 @@ function LastMessage({ a }) {
 }
 
 export function ActivityDetail({ a, onClose, onToggle, onWait, onChat, onPerson, onEdit, onDelete, onReport, flash }) {
-  const { me, isAdmin } = useStore();
+  const { me, isAdmin, places } = useStore();
   const inIt = isMember(a, me?.uid);
   const isHost = a.hostUid === me?.uid;
-  const past = a.at < useNow();
+  const badge = timeBadge(a.at, useNow());
+  const [calOpen, setCalOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   return (
     <Sheet onClose={onClose} label={a.title}>
       <div className="pr-10">
         <div className="text-sm font-semibold text-grove">
           {dayLabel(a.at)} at {hhmm(a.at)}
-          {past ? " · started" : ""}
+          {badge ? ` · ${badge.text}` : ""}
         </div>
         <h2 className="text-2xl font-extrabold mt-1 leading-tight break-words">{a.title}</h2>
         <div className="mt-1 text-muted break-words">
@@ -144,10 +161,36 @@ export function ActivityDetail({ a, onClose, onToggle, onWait, onChat, onPerson,
         <a href={whatsappUrl(a)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
           WhatsApp
         </a>
-        <a href={mapUrl(a.place)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
+        <a href={mapUrl(a.place, places[a.place])} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full bg-mist">
           Map
         </a>
+        <button onClick={() => setCalOpen((v) => !v)} className={`px-4 py-2 rounded-full ${calOpen ? "bg-ink text-white" : "bg-mist"}`} aria-expanded={calOpen}>
+          Calendar
+        </button>
+        <button onClick={() => setQrOpen(true)} className="px-4 py-2 rounded-full bg-mist">
+          QR
+        </button>
       </div>
+      {calOpen && (
+        <div className="mt-2 flex flex-wrap gap-2 text-sm font-semibold">
+          <button onClick={() => downloadIcs(a)} className="px-4 py-2 rounded-full border border-line">
+            iPhone / Outlook
+          </button>
+          <a href={googleCalendarUrl(a)} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full border border-line">
+            Google Calendar
+          </a>
+          <span className="self-center text-xs text-muted">Reminder 1 hour before</span>
+        </div>
+      )}
+      {qrOpen && (
+        <QrSheet
+          url={activityUrl(a.id)}
+          kicker={`${dayLabel(a.at)} at ${hhmm(a.at)}`}
+          title={a.title}
+          subtitle={a.place}
+          onClose={() => setQrOpen(false)}
+        />
+      )}
       <p className="mt-4 leading-relaxed whitespace-pre-line break-words">{a.desc || "No details yet."}</p>
 
       <div className="mt-5">
