@@ -4,9 +4,10 @@ import {
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, connectFirestoreEmulator, collection, collectionGroup, doc, onSnapshot, query, where, orderBy, limitToLast,
   addDoc, setDoc, getCountFromServer, updateDoc, deleteDoc, getDocs, runTransaction, writeBatch,
-  serverTimestamp, arrayUnion, arrayRemove,
+  serverTimestamp,
 } from "firebase/firestore";
 import { HISTORY_MS } from "../lib/constants";
+import { joinPatch, leavePatch, waitJoinPatch, waitLeavePatch } from "../lib/membership";
 
 // Конфиг веб-клиента Firebase не секретный (он всё равно попадает в бандл),
 // но по договорённости берётся из env. Значения по умолчанию — текущий проект,
@@ -48,11 +49,22 @@ const mapActivity = (d) => {
     desc: x.desc || "",
     hostUid: x.hostUid,
     memberUids: x.memberUids || [],
+    waitUids: x.waitUids || [],
     lastMsgAt: x.lastMsgAt ? toMs(x.lastMsgAt) : 0,
     lastMsgUid: x.lastMsgUid || null,
     createdAt: x.createdAt ? toMs(x.createdAt) : 0,
   };
 };
+
+function applyTx(id, makePatch) {
+  return runTransaction(db, async (tx) => {
+    const ref = doc(db, "activities", id);
+    const s = await tx.get(ref);
+    if (!s.exists()) throw new Error("This activity was removed.");
+    const patch = makePatch(s.data());
+    if (patch) tx.update(ref, patch);
+  });
+}
 
 const fail = (onError) => (e) => {
   console.error(e);
@@ -67,7 +79,8 @@ export const firebaseBackend = {
       if (!u) return cb(null);
       let isAdmin = false;
       try {
-        isAdmin = (await u.getIdTokenResult()).claims.admin === true;
+        // true — свежий токен с сервера: роль модератора видна сразу, без повторного входа.
+        isAdmin = (await u.getIdTokenResult(true)).claims.admin === true;
       } catch {
         /* нет сети — считаем обычным пользователем */
       }
@@ -153,27 +166,18 @@ export const firebaseBackend = {
     await deleteDoc(doc(db, "activities", id));
   },
 
-  // Транзакция: место проверяется на сервере, лимит не превысить даже при одновременных Join.
-  join(id, uid) {
-    return runTransaction(db, async (tx) => {
-      const ref = doc(db, "activities", id);
-      const s = await tx.get(ref);
-      if (!s.exists()) throw new Error("This activity was removed.");
-      const { memberUids = [], max = 0 } = s.data();
-      if (memberUids.includes(uid)) return;
-      if (max && memberUids.length >= max) throw new Error("Sorry, it just filled up.");
-      tx.update(ref, { memberUids: arrayUnion(uid) });
-    });
-  },
+  // Все переходы — в транзакции: лимит мест и очередь проверяются на свежих данных,
+  // даже если несколько человек нажали одновременно.
+  join: (id, uid) => applyTx(id, (a) => joinPatch(a, uid)),
+  leave: (id, uid) => applyTx(id, (a) => leavePatch(a, uid)),
+  joinWaitlist: (id, uid) => applyTx(id, (a) => waitJoinPatch(a, uid)),
+  leaveWaitlist: (id, uid) => applyTx(id, (a) => waitLeavePatch(a, uid)),
 
-  leave(id, uid) {
-    return runTransaction(db, async (tx) => {
-      const ref = doc(db, "activities", id);
-      const s = await tx.get(ref);
-      if (!s.exists() || !s.data().memberUids?.includes(uid)) return;
-      tx.update(ref, { memberUids: arrayRemove(uid) });
-    });
+  // Кого пользователь заблокировал (видит только он).
+  onBlocks(uid, cb, onError) {
+    return onSnapshot(doc(db, "blocks", uid), (s) => cb(s.data()?.uids || []), fail(onError));
   },
+  setBlocks: (uid, uids) => setDoc(doc(db, "blocks", uid), { uids }),
 
   onMessages(id, limit, cb, onError) {
     const q = query(collection(db, "activities", id, "messages"), orderBy("createdAt"), limitToLast(limit));

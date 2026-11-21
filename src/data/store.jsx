@@ -32,6 +32,7 @@ export function StoreProvider({ children }) {
   const dataKey = complete(profile) ? uid : null;
   const acts = useKeyed(dataKey, (cb, err) => backend.onActivities(cb, err));
   const people = useKeyed(dataKey, (cb, err) => backend.onUsers(cb, err));
+  const blockList = useKeyed(dataKey, (cb, err) => backend.onBlocks(uid, cb, err));
   const reads = useKeyed(dataKey, (cb, err) => backend.onReads(uid, cb, err));
   const reports = useKeyed(user?.isAdmin && dataKey ? uid : null, (cb, err) => backend.onReports(cb, err));
 
@@ -41,10 +42,11 @@ export function StoreProvider({ children }) {
     // Профиль из старой версии приложения (без факультета/курса) считается незаполненным.
     else if (user && profile !== undefined) me = complete(profile) ? { ...profile, sid: priv?.sid || "" } : null;
 
+    const blocked = new Set(blockList || []);
     // Чаты с новыми сообщениями от других участников, которые ты ещё не открывал.
     const unread = new Set(
       (acts || [])
-        .filter((a) => uid && a.memberUids.includes(uid) && a.lastMsgAt && a.lastMsgUid !== uid && a.lastMsgAt > (reads?.[a.id] || 0))
+        .filter((a) => uid && a.memberUids.includes(uid) && a.lastMsgAt && a.lastMsgUid !== uid && !blocked.has(a.lastMsgUid) && a.lastMsgAt > (reads?.[a.id] || 0))
         .map((a) => a.id),
     );
 
@@ -62,6 +64,11 @@ export function StoreProvider({ children }) {
       people: people || {},
       reports: reports || [],
       unread,
+      blocked,
+      block: (other) => backend.setBlocks(need(), [...new Set([...(blockList || []), other])]),
+      unblock: (other) => backend.setBlocks(need(), (blockList || []).filter((u) => u !== other)),
+      joinWaitlist: (id) => backend.joinWaitlist(id, need()),
+      leaveWaitlist: (id) => backend.leaveWaitlist(id, need()),
       markRead: (id) => uid && backend.markRead(uid, id),
       countMessages: () => backend.countMessages(),
       signIn: () => backend.signIn(),
@@ -76,7 +83,7 @@ export function StoreProvider({ children }) {
       report: (r) => backend.report(need(), r),
       resolveReport: (id) => backend.resolveReport(id),
     };
-  }, [user, uid, profile, priv, acts, people, reports, reads]);
+  }, [user, uid, profile, priv, acts, people, reports, reads, blockList]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }

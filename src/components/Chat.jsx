@@ -22,7 +22,7 @@ function Bubble({ m, mine, onPerson }) {
 }
 
 export function ChatScreen({ a, onClose, onPerson, flash }) {
-  const { me, sendMessage, markRead } = useStore();
+  const { me, sendMessage, markRead, blocked } = useStore();
   const msgs = useMessages(a.id);
   // Чат открыт — всё, что в нём есть, считается прочитанным (и новые сообщения тоже).
   useEffect(() => {
@@ -59,9 +59,14 @@ export function ChatScreen({ a, onClose, onPerson, flash }) {
       <div className="flex-1 overflow-y-auto p-5 space-y-3 min-h-[260px]">
         <p className="text-xs text-center text-muted">Chat for everyone going. Agree on where and when to meet.</p>
         {msgs === undefined && <p className="text-sm text-center text-muted">Loading…</p>}
-        {msgs?.map((m) => (
-          <Bubble key={m.id} m={m} mine={m.uid === me.uid} onPerson={onPerson} />
-        ))}
+        {msgs
+          ?.filter((m) => !blocked.has(m.uid))
+          .map((m) => (
+            <Bubble key={m.id} m={m} mine={m.uid === me.uid} onPerson={onPerson} />
+          ))}
+        {msgs?.some((m) => blocked.has(m.uid)) && (
+          <p className="text-xs text-center text-muted">Messages from people you blocked are hidden.</p>
+        )}
         <div ref={end} />
       </div>
       <form
@@ -89,7 +94,7 @@ export function ChatScreen({ a, onClose, onPerson, flash }) {
 }
 
 function ChatRow({ a, onChat }) {
-  const { me, unread } = useStore();
+  const { me, unread, blocked } = useStore();
   const isNew = unread.has(a.id);
   const msgs = useMessages(a.id, 1);
   const last = msgs?.[0];
@@ -108,7 +113,7 @@ function ChatRow({ a, onChat }) {
         <div className={`text-sm truncate flex items-center gap-2 ${isNew ? "text-ink font-semibold" : "text-muted"}`}>
           {isNew && <span className="w-2.5 h-2.5 rounded-full bg-tangerine shrink-0" aria-label="New messages" />}
           <span className="truncate">
-          {last ? `${last.uid === me.uid ? "You" : who.short}: ${last.text}` : `${a.memberUids.length} ${a.memberUids.length === 1 ? "person" : "people"} · no messages yet`}</span>
+          {last ? (blocked.has(last.uid) ? "Message hidden" : `${last.uid === me.uid ? "You" : who.short}: ${last.text}`) : `${a.memberUids.length} ${a.memberUids.length === 1 ? "person" : "people"} · no messages yet`}</span>
         </div>
       </div>
     </button>

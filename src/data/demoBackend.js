@@ -1,3 +1,5 @@
+import { joinPatch, leavePatch, waitJoinPatch, waitLeavePatch } from "../lib/membership";
+
 // Демо-режим: те же функции, что у firebaseBackend, но всё в памяти браузера.
 // Включается через ?demo в адресе или VITE_DEMO=1. Удобно для показа без интернета/аккаунта.
 
@@ -39,11 +41,11 @@ const state = {
   acts: [
     { id: "a1", title: "5-a-side football", cat: "Sports", at: at(0, 19, 30), place: "CIU Arena · Football pitches", max: 10, desc: "Casual game, all levels. Bring water. We split into teams on the spot.", hostUid: U("Tunde"), memberUids: us("Tunde", "Omar", "Reza", "Bilal", "Arda", "Musa", "Kemal") },
     { id: "a2", title: "Late-night study for CMPE 211", cat: "Study", at: at(0, 21, 0), place: "CIU Library", max: 6, desc: "Going through past midterm questions together.", hostUid: U("Leyla"), memberUids: us("Leyla", "Sara") },
-    { id: "a3", title: "Hellim and kebab in Lefkoşa old town", cat: "Food", at: at(1, 20, 0), place: "Büyük Han, Lefkoşa (shared taxi from campus)", max: 5, desc: "Dinner at a local place near Büyük Han. Around 400 TL each.", hostUid: U("Elif"), memberUids: us("Elif", "Amaka", "Daniel") },
+    { id: "a3", title: "Hellim and kebab in Lefkoşa old town", cat: "Food", at: at(1, 20, 0), place: "Büyük Han, Lefkoşa (shared taxi from campus)", max: 3, desc: "Dinner at a local place near Büyük Han. Around 400 TL each.", hostUid: U("Elif"), memberUids: us("Elif", "Amaka", "Daniel") },
     { id: "a4", title: "Board games night", cat: "Games", at: at(1, 18, 30), place: "Soli Dormitory", max: 8, desc: "Catan, Codenames and UNO. Snacks welcome.", hostUid: U("Daniel"), memberUids: us("Daniel", "Sara", "Aisha") },
     { id: "a5", title: "Sunrise hike to St. Hilarion", cat: "Trips", at: at(3, 5, 30), place: "St. Hilarion Castle (two cars from campus)", max: 7, desc: "About 2 hours up and back. Wear proper shoes, it's rocky.", hostUid: U("Arda"), memberUids: us("Arda", "Musa") },
     { id: "a6", title: "Beach day in Kyrenia", cat: "Chill", at: at(4, 11, 0), place: "Escape Beach, Kyrenia", max: 0, desc: "Escape Beach. Bus there, figure out the way back together.", hostUid: U("Zara"), memberUids: us("Zara", "Aisha", "Omar", "Leyla", "Kemal") },
-  ].map((a) => ({ lastMsgAt: 0, ...a })),
+  ].map((a) => ({ lastMsgAt: 0, waitUids: [], ...a })),
   msgs: {
     a1: [
       { id: "m1", uid: U("Tunde"), text: "Pitch is booked till 21:00", at: minsAgo(90) },
@@ -53,6 +55,7 @@ const state = {
   },
   reports: [],
   reads: {},
+  blocks: {},
 };
 state.acts.forEach((a) => {
   const last = state.msgs[a.id]?.at(-1);
@@ -70,6 +73,17 @@ const watch = (fn) => {
 };
 const tick = () => new Promise((r) => setTimeout(r, 120));
 let seq = 100;
+
+async function applyDemo(id, makePatch) {
+  await tick();
+  const a = state.acts.find((x) => x.id === id);
+  if (!a) throw new Error("This activity was removed.");
+  const patch = makePatch(a);
+  if (patch) {
+    updateAct(id, (x) => ({ ...x, ...patch }));
+    emit();
+  }
+}
 
 const updateAct = (id, fn) => {
   state.acts = state.acts.map((a) => (a.id === id ? fn(a) : a));
@@ -125,19 +139,14 @@ export const demoBackend = {
     emit();
   },
 
-  async join(id, uid) {
-    await tick();
-    const a = state.acts.find((x) => x.id === id);
-    if (!a) throw new Error("This activity was removed.");
-    if (a.memberUids.includes(uid)) return;
-    if (a.max && a.memberUids.length >= a.max) throw new Error("Sorry, it just filled up.");
-    updateAct(id, (x) => ({ ...x, memberUids: [...x.memberUids, uid] }));
-    emit();
-  },
+  join: (id, uid) => applyDemo(id, (a) => joinPatch(a, uid)),
+  leave: (id, uid) => applyDemo(id, (a) => leavePatch(a, uid)),
+  joinWaitlist: (id, uid) => applyDemo(id, (a) => waitJoinPatch(a, uid)),
+  leaveWaitlist: (id, uid) => applyDemo(id, (a) => waitLeavePatch(a, uid)),
 
-  async leave(id, uid) {
-    await tick();
-    updateAct(id, (x) => ({ ...x, memberUids: x.memberUids.filter((u) => u !== uid) }));
+  onBlocks: (uid, cb) => watch(() => cb(state.blocks[uid] || [])),
+  async setBlocks(uid, uids) {
+    state.blocks = { ...state.blocks, [uid]: uids };
     emit();
   },
 

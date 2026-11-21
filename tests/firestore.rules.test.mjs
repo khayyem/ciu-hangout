@@ -173,3 +173,58 @@ test("stats: only admins can count all messages", async () => {
   const snap = await assertSucceeds(getCountFromServer(collectionGroup(db("mod", { admin: true }), "messages")));
   if (snap.data().count !== 1) throw new Error("expected 1 message");
 });
+
+// ---- лист ожидания ----
+test("waitlist: only when full, only yourself; leaving promotes the first in line", async () => {
+  await withProfiles("alice", "bob", "carol", "dave", "eve");
+  await seed((f) => setDoc(doc(f, "activities", "w1"), { ...activity("alice"), memberUids: ["alice", "bob"], max: 2, createdAt: new Date() }));
+  const ref = (u) => doc(db(u), "activities/w1");
+
+  // мест нет → в очередь можно, только себя, без дублей
+  await assertFails(updateDoc(ref("carol"), { waitUids: ["dave"] }));
+  await assertSucceeds(updateDoc(ref("carol"), { waitUids: ["carol"] }));
+  await assertFails(updateDoc(ref("carol"), { waitUids: ["carol", "carol"] }));
+  await assertSucceeds(updateDoc(ref("dave"), { waitUids: ["carol", "dave"] }));
+  // нельзя встать перед другими
+  await assertFails(updateDoc(ref("eve"), { waitUids: ["eve", "carol", "dave"] }));
+  // участник не может встать в очередь
+  await assertFails(updateDoc(ref("bob"), { waitUids: ["carol", "dave", "bob"] }));
+
+  // Bob выходит: обязан отдать место Carol (первой в очереди)
+  await assertFails(updateDoc(ref("bob"), { memberUids: ["alice"] }));
+  await assertFails(updateDoc(ref("bob"), { memberUids: ["alice", "dave"], waitUids: ["carol"] }));
+  await assertSucceeds(updateDoc(ref("bob"), { memberUids: ["alice", "carol"], waitUids: ["dave"] }));
+
+  // Dave выходит из очереди сам; чужого убрать нельзя
+  await assertFails(updateDoc(ref("eve"), { waitUids: [] }));
+  await assertSucceeds(updateDoc(ref("dave"), { waitUids: [] }));
+
+  // когда место есть, в очередь вставать нельзя
+  await seed((f) => updateDoc(doc(f, "activities/w1"), { max: 5 }));
+  await assertFails(updateDoc(ref("eve"), { waitUids: ["eve"] }));
+  await assertSucceeds(updateDoc(ref("eve"), { memberUids: arrayUnion("eve") }));
+});
+
+test("waitlist of one: leaving hands the spot to them", async () => {
+  await withProfiles("alice", "bob", "carol");
+  await seed((f) => setDoc(doc(f, "activities", "w3"), { ...activity("alice"), memberUids: ["alice", "bob"], waitUids: ["carol"], max: 2, createdAt: new Date() }));
+  await assertFails(updateDoc(doc(db("bob"), "activities/w3"), { memberUids: ["alice"], waitUids: ["carol"] }));
+  await assertSucceeds(updateDoc(doc(db("bob"), "activities/w3"), { memberUids: ["alice", "carol"], waitUids: [] }));
+});
+
+test("join from the waitlist removes you from it", async () => {
+  await withProfiles("alice", "bob");
+  await seed((f) => setDoc(doc(f, "activities", "w2"), { ...activity("alice"), memberUids: ["alice"], waitUids: ["bob"], max: 3, createdAt: new Date() }));
+  const ref = doc(db("bob"), "activities/w2");
+  await assertFails(updateDoc(ref, { memberUids: ["alice", "bob"] })); // остался бы в очереди
+  await assertSucceeds(updateDoc(ref, { memberUids: ["alice", "bob"], waitUids: [] }));
+});
+
+// ---- блокировки ----
+test("blocks: private to the owner", async () => {
+  await assertSucceeds(setDoc(doc(db("alice"), "blocks/alice"), { uids: ["eve"] }));
+  await assertSucceeds(getDoc(doc(db("alice"), "blocks/alice")));
+  await assertFails(getDoc(doc(db("eve"), "blocks/alice")));
+  await assertFails(setDoc(doc(db("eve"), "blocks/alice"), { uids: [] }));
+  await assertFails(setDoc(doc(db("alice"), "blocks/alice"), { uids: "eve" }));
+});

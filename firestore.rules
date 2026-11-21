@@ -63,7 +63,7 @@ service cloud.firestore {
         && request.resource.data.memberUids == [me()]
         && request.resource.data.createdAt == request.time;
 
-      allow update: if hostEdit() || joining() || leaving() || touchingChat();
+      allow update: if hostEdit() || joining() || leaving() || waitlisting() || touchingChat();
 
       allow delete: if signedIn() && (resource.data.hostUid == me() || isAdmin());
     }
@@ -78,29 +78,65 @@ service cloud.firestore {
     }
 
     // Вступить можно только самому себе и только если есть место.
+    // Если ты был в листе ожидания — заодно убираешь себя оттуда.
     function joining() {
       let before = resource.data.memberUids;
       let after = request.resource.data.memberUids;
+      let wb = resource.data.get('waitUids', []);
+      let wa = request.resource.data.get('waitUids', []);
       return hasProfile()
-        && changed().hasOnly(['memberUids'])
+        && changed().hasOnly(['memberUids', 'waitUids'])
         && !before.hasAny([me()])
         && after.size() == before.size() + 1
         && after.hasAll(before)
         && after.hasAll([me()])
-        && (resource.data.max == 0 || after.size() <= resource.data.max);
+        && (resource.data.max == 0 || after.size() <= resource.data.max)
+        && wa == wb.removeAll([me()]);
     }
 
-    // Выйти может любой участник, кроме хоста.
+    // Выйти может любой участник, кроме хоста. Если есть лист ожидания,
+    // место обязательно получает первый в очереди (в той же записи).
     function leaving() {
       let before = resource.data.memberUids;
       let after = request.resource.data.memberUids;
+      let wb = resource.data.get('waitUids', []);
+      let wa = request.resource.data.get('waitUids', []);
       return signedIn()
-        && changed().hasOnly(['memberUids'])
+        && changed().hasOnly(['memberUids', 'waitUids'])
         && resource.data.hostUid != me()
         && before.hasAny([me()])
         && !after.hasAny([me()])
-        && after.size() == before.size() - 1
-        && before.hasAll(after);
+        && before.removeAll([me()]).size() == before.size() - 1
+        && (
+          (wb.size() == 0
+            && wa.size() == 0
+            && after.size() == before.size() - 1
+            && before.hasAll(after))
+          || (wb.size() > 0
+            // в очереди нет дублей, так что это «очередь без первого» (срез [1:] падает на одном элементе)
+            && wa == wb.removeAll([wb[0]])
+            && after.size() == before.size()
+            && after.hasAll(before.removeAll([me()]))
+            && after.hasAll([wb[0]])
+            && !before.hasAny([wb[0]]))
+        );
+    }
+
+    // Лист ожидания: встать в очередь (только когда мест нет) или выйти из неё.
+    function waitlisting() {
+      let wb = resource.data.get('waitUids', []);
+      let wa = request.resource.data.waitUids;
+      return hasProfile()
+        && changed().hasOnly(['waitUids'])
+        && !resource.data.memberUids.hasAny([me()])
+        && (
+          (!wb.hasAny([me()])
+            && resource.data.max > 0
+            && resource.data.memberUids.size() >= resource.data.max
+            && wa == wb.concat([me()])
+            && wa.size() <= 50)
+          || (wb.hasAny([me()]) && wa == wb.removeAll([me()]))
+        );
     }
 
     // Участник отправил сообщение — обновляем время последнего сообщения (для сортировки чатов).
@@ -142,6 +178,16 @@ service cloud.firestore {
         && request.resource.data.at is map
         && request.resource.data.at.size() <= 1000;
       allow delete: if signedIn() && me() == uid;
+    }
+
+    // ---------- Блокировки ----------
+    // blocks/{uid}.uids — кого пользователь скрыл. Видит и меняет только он сам.
+    match /blocks/{uid} {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid
+        && request.resource.data.keys().hasOnly(['uids'])
+        && request.resource.data.uids is list
+        && request.resource.data.uids.size() <= 500;
     }
 
     // ---------- Жалобы ----------

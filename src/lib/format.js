@@ -21,11 +21,13 @@ export const firstName = (full = "") => full.trim().split(/\s+/)[0] || "";
 export function spotsText(a) {
   if (!a.max) return { text: "Open to everyone", hot: false };
   const left = a.max - a.memberUids.length;
-  if (left <= 0) return { text: "Full", hot: false };
+  const waiting = a.waitUids?.length || 0;
+  if (left <= 0) return { text: waiting ? `Full · ${waiting} waiting` : "Full", hot: false };
   return { text: left === 1 ? "1 spot left" : `${left} spots left`, hot: left <= 2 };
 }
 
 export const isMember = (a, uid) => !!uid && a.memberUids.includes(uid);
+export const isWaiting = (a, uid) => !!uid && !!a.waitUids?.includes(uid);
 export const isFull = (a) => !!a.max && a.memberUids.length >= a.max;
 
 // Локальная дата/время в формате для <input type="date|time">
